@@ -1,15 +1,8 @@
-"""Voice routes — TTS synthesis endpoints.
-
-POST /tts        Synthesise a complete answer and return base-64 audio.
-POST /tts/stream Synthesise and return each audio chunk as a newline-delimited
-                 JSON stream (one TTSChunk object per line).
-WS   /voice      Reserved for future real-time voice transport.
-"""
-
 from __future__ import annotations
 
 import base64
 import logging
+import requests
 
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, status
 from fastapi.responses import StreamingResponse
@@ -29,26 +22,44 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["voice"])
 
+OPENROUTER_API_KEY = "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"
 
-# ---------------------------------------------------------------------------
-# Dependency — swap this out for a real provider in your DI layer
-# ---------------------------------------------------------------------------
+def get_answer_from_qwen(question: str) -> str:
+    response = requests.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "http://localhost:8000",
+            "X-Title": "Agile Assignment"
+        },
+        json={
+            "model": "google/gemma-3-4b-it:free",
+            "messages": [{"role": "user", "content": f"Answer in 2 sentences only: {question}"}]
+        }
+    )
+    data = response.json()
+    print("Qwen response:", data)
+    if "choices" not in data:
+        raise Exception(f"Qwen API error: {data}")
+    content = data["choices"][0]["message"]["content"]
+    content = content.split('\n')[0][:500]
+    return content
 
 def get_tts_provider() -> TextToSpeechProvider:
-    """Return the configured TTS provider.
+    from gtts import gTTS
+    import io
+    from app.domain.models import AudioSynthesis
 
-    Replace the body of this function (or override via FastAPI dependency
-    injection) to plug in a real provider such as OpenAI, ElevenLabs, gTTS…
-    """
-    raise NotImplementedError(
-        "No TTS provider has been configured. "
-        "Implement get_tts_provider() in the voice route or your DI setup."
-    )
+    class GTTSProvider:
+        def synthesize(self, text: str) -> AudioSynthesis:
+            buf = io.BytesIO()
+            gTTS(text=text, lang="en", slow=False).write_to_fp(buf)
+            buf.seek(0)
+            return AudioSynthesis(audio_bytes=buf.read(), mime_type="audio/mpeg")
 
+    return GTTSProvider()
 
-# ---------------------------------------------------------------------------
-# POST /tts — single audio response
-# ---------------------------------------------------------------------------
 
 @router.post(
     "/tts",
@@ -60,12 +71,6 @@ def synthesize_tts(
     body: TTSRequest,
     provider: TextToSpeechProvider = Depends(get_tts_provider),
 ) -> TTSResponse:
-    """Convert *body.text* to audio and return the result as base-64.
-
-    The answer is cleaned (markdown stripped), split into TTS-safe segments,
-    synthesised with automatic retry on length errors, and the audio bytes
-    are concatenated into one response.
-    """
     try:
         result = synthesize_answer(provider, body.text)
     except TTSError as exc:
@@ -74,7 +79,7 @@ def synthesize_tts(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"TTS provider error: {exc}",
         ) from exc
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.exception("Unexpected TTS error")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -88,10 +93,6 @@ def synthesize_tts(
     )
 
 
-# ---------------------------------------------------------------------------
-# POST /tts/stream — newline-delimited JSON stream of audio chunks
-# ---------------------------------------------------------------------------
-
 @router.post(
     "/tts/stream",
     summary="Synthesise answer text to audio (streamed chunks)",
@@ -101,12 +102,6 @@ def synthesize_tts_stream(
     body: TTSRequest,
     provider: TextToSpeechProvider = Depends(get_tts_provider),
 ) -> StreamingResponse:
-    """Stream audio chunks as newline-delimited JSON (one TTSChunk per line).
-
-    Each line is a JSON-serialised TTSChunk containing a base-64-encoded
-    audio segment. Clients can start playing back audio before all chunks
-    arrive.
-    """
     def _generate():
         try:
             for index, chunk in enumerate(stream_answer_chunks(provider, body.text)):
@@ -119,7 +114,7 @@ def synthesize_tts_stream(
         except TTSError as exc:
             logger.error("TTS stream error: %s", exc)
             yield f'{{"error": "{exc}"}}\n'
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.exception("Unexpected TTS stream error")
             yield '{"error": "Unexpected error during speech synthesis."}\n'
 
@@ -129,9 +124,70 @@ def synthesize_tts_stream(
     )
 
 
-# ---------------------------------------------------------------------------
-# Legacy session endpoint (kept for backward compatibility)
-# ---------------------------------------------------------------------------
+@router.post(
+    "/ask",
+    response_model=TTSResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Ask a question and get audio response from Qwen LLM",
+)
+def ask_and_speak(
+    body: TTSRequest,
+    provider: TextToSpeechProvider = Depends(get_tts_provider),
+) -> TTSResponse:
+    try:
+        answer = get_answer_from_qwen(body.text)
+        result = synthesize_answer(provider, answer)
+    except TTSError as exc:
+        logger.error("TTS synthesis failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"TTS provider error: {exc}",
+        ) from exc
+    except Exception as exc:
+        logger.exception("Unexpected error")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unexpected error.",
+        ) from exc
+
+    return TTSResponse(
+        mime_type=result.mime_type,
+        audio_b64=base64.b64encode(result.audio_bytes).decode(),
+        chunk_count=1,
+    )
+
+
+@router.post(
+    "/ask/stream",
+    summary="Ask a question and get streamed audio response from Qwen LLM",
+    response_class=StreamingResponse,
+)
+def ask_and_speak_stream(
+    body: TTSRequest,
+    provider: TextToSpeechProvider = Depends(get_tts_provider),
+) -> StreamingResponse:
+    def _generate():
+        try:
+            answer = get_answer_from_qwen(body.text)
+            for index, chunk in enumerate(stream_answer_chunks(provider, answer)):
+                tts_chunk = TTSChunk(
+                    index=index,
+                    mime_type=chunk.mime_type,
+                    audio_b64=base64.b64encode(chunk.audio_bytes).decode(),
+                )
+                yield tts_chunk.model_dump_json() + "\n"
+        except TTSError as exc:
+            logger.error("TTS stream error: %s", exc)
+            yield f'{{"error": "{exc}"}}\n'
+        except Exception:
+            logger.exception("Unexpected TTS stream error")
+            yield '{"error": "Unexpected error."}\n'
+
+    return StreamingResponse(
+        _generate(),
+        media_type="application/x-ndjson",
+    )
+
 
 @router.post(
     "/voice",
@@ -141,10 +197,6 @@ def synthesize_tts_stream(
 def create_voice_session(_: VoiceSessionRequest) -> ApiError:
     return not_implemented_error("Voice session creation")
 
-
-# ---------------------------------------------------------------------------
-# WebSocket — reserved for future real-time voice transport
-# ---------------------------------------------------------------------------
 
 @router.websocket("/voice/ws")
 async def voice_socket(websocket: WebSocket) -> None:
