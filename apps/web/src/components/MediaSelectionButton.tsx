@@ -1,5 +1,6 @@
 "use client";
 
+import type { ChangeEvent, ReactNode } from "react";
 import { useRef, useState } from "react";
 
 type MediaType = "image" | "document" | "audio" | "video";
@@ -8,7 +9,7 @@ interface MediaOption {
   type: MediaType;
   label: string;
   accept: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
 }
 
 const MEDIA_OPTIONS: MediaOption[] = [
@@ -87,7 +88,7 @@ export default function MediaSelectionButton({ onFileSelected }: MediaSelectionB
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !currentTypeRef.current) return;
     const selected: SelectedFile = { type: currentTypeRef.current.type, file };
@@ -101,11 +102,9 @@ export default function MediaSelectionButton({ onFileSelected }: MediaSelectionB
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "8px", width: "100%" }}>
-
-      {/* Chips shown above inside the bar */}
+    <div className="media-selection-wrapper">
       {selectedFiles.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", paddingLeft: "4px" }}>
+        <div className="media-chips" aria-label="Attached files">
           {selectedFiles.map((sf, i) => (
             <div key={i} className="media-chip">
               <span className="media-chip-icon">
@@ -124,51 +123,38 @@ export default function MediaSelectionButton({ onFileSelected }: MediaSelectionB
         </div>
       )}
 
-      {/* Bottom row: + button + input */}
-      <div style={{ display: "flex", alignItems: "center", gap: "8px", width: "100%" }}>
-        <div className="media-dropdown-container">
-          <button
-            className="media-selection-btn-plus"
-            onClick={() => setOpen((v) => !v)}
-            aria-haspopup="listbox"
-            aria-expanded={open}
-            aria-label="Attach media"
-          >
-            +
-          </button>
+      <div className="media-dropdown-container">
+        <button
+          type="button"
+          className="media-selection-btn-plus"
+          onClick={() => setOpen((v) => !v)}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-label="Attach media"
+          title="Attach media"
+        >
+          +
+        </button>
 
-          {open && (
-            <>
-              <div className="media-backdrop" onClick={() => setOpen(false)} />
-              <ul className="media-dropdown" role="listbox" aria-label="Select media type">
-                {MEDIA_OPTIONS.map((option) => (
-                  <li
-                    key={option.type}
-                    role="option"
-                    className="media-dropdown-item"
-                    onClick={() => handleOptionClick(option)}
-                  >
-                    <span className="media-item-icon">{option.icon}</span>
-                    <span>{option.label}</span>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-        </div>
-
-        <input
-          type="text"
-          placeholder="Start asking..."
-          style={{
-            flex: 1,
-            border: "none",
-            outline: "none",
-            fontSize: "15px",
-            background: "transparent",
-            color: "#374151",
-          }}
-        />
+        {open && (
+          <>
+            <div className="media-backdrop" onClick={() => setOpen(false)} />
+            <ul className="media-dropdown" role="listbox" aria-label="Select media type">
+              {MEDIA_OPTIONS.map((option) => (
+                <li
+                  key={option.type}
+                  role="option"
+                  aria-selected="false"
+                  className="media-dropdown-item"
+                  onClick={() => handleOptionClick(option)}
+                >
+                  <span className="media-item-icon">{option.icon}</span>
+                  <span>{option.label}</span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </div>
 
       <input

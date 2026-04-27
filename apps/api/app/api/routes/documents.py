@@ -1,8 +1,10 @@
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
+from app.api.dependencies.auth import require_admin
 from app.core.responses import not_implemented_error
 from app.schemas.common import ApiError
-from app.schemas.documents import DocumentIngestRequest
+from app.schemas.documents import DocumentIngestRequest, DocumentReplaceResponse
+from app.services.document_service import reindex_document, replace_document, validate_filename, validate_size
 
 router = APIRouter(tags=["documents"])
 
@@ -14,3 +16,30 @@ router = APIRouter(tags=["documents"])
 )
 def ingest_document(_: DocumentIngestRequest) -> ApiError:
     return not_implemented_error("Document ingestion")
+
+
+@router.put("/documents", response_model=DocumentReplaceResponse)
+async def replace_document_endpoint(
+    file: UploadFile = File(...),
+    _admin: dict = Depends(require_admin),
+) -> DocumentReplaceResponse:
+    if not file.filename:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="No filename provided")
+    try:
+        validate_filename(file.filename)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc))
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Uploaded file is empty")
+    try:
+        validate_size(content)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc))
+    replace_document(file.filename, content)
+    reindex_document(file.filename)
+    return DocumentReplaceResponse(
+        accepted=True,
+        filename=file.filename,
+        message=f"Document '{file.filename}' replaced successfully",
+    )
