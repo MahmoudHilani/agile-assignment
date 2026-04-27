@@ -1,0 +1,15 @@
+{
+  "name": "agile-assignment",
+  "private": true,
+  "packageManager": "pnpm@10.0.0",
+  "scripts": {
+    "install:web": "pnpm --dir apps/web install",
+    "dev:web": "pnpm --dir apps/web dev",
+    "build:web": "pnpm --dir apps/web build",
+    "lint:web": "pnpm --dir apps/web lint",
+    "build": "pnpm run build:web",
+    "lint": "pnpm run lint:web",
+    "dev:api": "python -m uv run --project apps/api uvicorn app.main:app --reload",
+    "test:api": "python -m uv run --project apps/api pytest"
+  }
+}
