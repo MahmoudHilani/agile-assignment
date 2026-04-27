@@ -12,3 +12,14 @@ class DocumentIngestRequest(BaseModel):
 class DocumentIngestResponse(BaseModel):
     accepted: bool
     message: str
+
+
+class CompanyDocumentReplaceRequest(BaseModel):
+    source_name: str
+    content: str
+
+
+class CompanyDocumentReplaceResponse(BaseModel):
+    message: str
+    source_name: str
+    chunks_indexed: int

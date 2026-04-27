@@ -13,13 +13,6 @@ def test_documents_endpoint_is_reserved() -> None:
     assert response.json()["code"] == "NOT_IMPLEMENTED"
 
 
-def test_query_endpoint_is_reserved() -> None:
-    response = client.post("/query", json={"query": "What should this project do?"})
-
-    assert response.status_code == 501
-    assert response.json()["code"] == "NOT_IMPLEMENTED"
-
-
 def test_voice_websocket_is_reserved() -> None:
     with client.websocket_connect("/voice") as websocket:
         payload = websocket.receive_json()
