@@ -4,12 +4,15 @@ import type { DragEvent } from "react";
 import { useState } from "react";
 import CopyTextButton from "@/components/CopyTextButton";
 import MessageInput from "@/components/MessageInput";
+import VoiceWave from "@/components/VoiceWave";
 
 const LLM_OUTPUT_TEXT = "LLM OUTPUT DATA";
 
 export default function Home() {
   const [isDragging, setIsDragging] = useState(false);
   const [dragCounter, setDragCounter] = useState(0);
+  const [isListening, setIsListening] = useState(false);
+
 
   const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();

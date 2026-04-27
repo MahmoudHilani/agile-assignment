@@ -3,8 +3,14 @@
 import type { KeyboardEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import MediaSelectionButton from "@/components/MediaSelectionButton";
+import VoiceWave from "@/components/VoiceWave";
 
-export default function MessageInput() {
+  interface MessageInputProps{
+    isListening?: boolean;
+    setIsListening?: (val:boolean) => void;
+  }
+
+export default function MessageInput({isListening,setIsListening}:MessageInputProps) {
   const [message, setMessage] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [recordingPulse, setRecordingPulse] = useState(false);
@@ -102,16 +108,22 @@ export default function MessageInput() {
   return (
     <section className="message-composer" aria-label="Message composer">
       <MediaSelectionButton />
-      <textarea
-        ref={textareaRef}
-        className="message-textarea"
-        placeholder="Type your message..."
-        value={message}
-        onChange={(event) => setMessage(event.target.value)}
-        onKeyDown={handleKeyDown}
-        rows={1}
-        aria-label="Message input"
-      />
+      {isRecording ? (
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <VoiceWave isListening={isRecording} />
+        </div>
+      ) : (
+        <textarea
+          ref={textareaRef}
+          className="message-textarea"
+          placeholder="Type your message..."
+          value={message}
+          onChange={(event) => setMessage(event.target.value)}
+          onKeyDown={handleKeyDown}
+          rows={1}
+          aria-label="Message input"
+        />
+      )}
       <div className="composer-actions">
         <span className="hint-text">
           {isRecording ? "Recording. Press stop when done." : "Enter to send. Shift+Enter for a new line."}
