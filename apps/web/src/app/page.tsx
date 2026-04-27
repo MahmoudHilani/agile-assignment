@@ -1,14 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import type { DragEvent } from "react";
+import { useState } from "react";
 import MediaSelectionButton from "@/components/MediaSelectionButton";
 import CopyTextButton from "@/components/CopyTextButton";
+
+const LLM_OUTPUT_TEXT = "LLM OUTPUT DATA";
 
 export default function Home() {
   const [isDragging, setIsDragging] = useState(false);
   const [dragCounter, setDragCounter] = useState(0);
 
-  const handleDragEnter = (e: any) => {
+  const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setDragCounter(prev => prev + 1);
     if (dragCounter === 0) {
@@ -16,7 +19,7 @@ export default function Home() {
     }
   };
 
-  const handleDragLeave = (e: any) => {
+  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setDragCounter(prev => prev - 1);
     if (dragCounter - 1 === 0) {
@@ -24,17 +27,17 @@ export default function Home() {
     }
   };
 
-  const handleDragOver = (e: any) => {
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
   };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(false);
     setDragCounter(0);
 
-    const files: File[] = Array.from(e.dataTransfer.files);
-    
+    const files = Array.from(e.dataTransfer.files);
+
     const validTypes = [
       'application/pdf',
       'text/plain',
@@ -46,10 +49,10 @@ export default function Home() {
       'image/bmp',
       'image/tiff'
     ];
-    const invalidFiles = files.filter((file: File) => !validTypes.includes(file.type));
-    
+    const invalidFiles = files.filter((file) => !validTypes.includes(file.type));
+
     if (invalidFiles.length > 0) {
-      alert(`Some files are not valid. Valid formats: docx, pdf, txt, img. Invalid files: ${invalidFiles.map((f: File) => f.name).join(', ')}`);
+      alert(`Some files are not valid. Valid formats: docx, pdf, txt, img. Invalid files: ${invalidFiles.map((file) => file.name).join(', ')}`);
     } else {
       alert('Files dropped successfully');
     }
@@ -118,7 +121,6 @@ export default function Home() {
       </div>
 
       <div style={{ width: "100%", maxWidth: "700px", display: "flex", justifyContent: "center" }}>
-        
         <div
           style={{
             display: "flex",
@@ -135,34 +137,14 @@ export default function Home() {
           <MediaSelectionButton />
         </div>
       </div>
-      <div style={{ 
-        width: "100%", 
-        maxWidth: "250px", 
+      <div style={{
+        width: "100%",
+        maxWidth: "250px",
         marginTop: "2px",
         display: "flex",
         justifyContent: "center"
       }}>
-        <button
-          onClick={() => {
-            navigator.clipboard.writeText("LLM OUTPUT DATA");
-            alert("LLM Output copied to clipboard!");
-          }}
-          style={{
-            width: "100%",
-            padding: "8px",
-            backgroundColor: "#6862e2",
-            color: "white",
-            border: "none",
-            borderRadius: "12px",
-            fontWeight: "bold",
-            fontSize: "0.9rem",
-            cursor: "pointer",
-            boxShadow: "0 4px 12px rgba(79, 70, 229, 0.2)",
-            transition: "transform 0.1s active"
-          }}
-        >
-          CLICK TO COPY LLM OUTPUT
-        </button>
+        <CopyTextButton textToCopy={LLM_OUTPUT_TEXT} />
       </div>
     </main>
   );

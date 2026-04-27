@@ -22,13 +22,21 @@ export default function CopyTextButton({ textToCopy }: CopyButtonProps) {
   return (
     <button
       onClick={handleCopy}
-      className={`px-3 py-1 text-sm font-medium rounded-md border transition-all duration-200 
-        ${isCopied 
-          ? "bg-green-100 text-green-700 border-green-500" 
-          : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 active:bg-gray-100 shadow-sm"
-        }`}
+      style={{
+        width: "100%",
+        padding: "8px",
+        backgroundColor: isCopied ? "#16a34a" : "#6862e2",
+        color: "white",
+        border: "none",
+        borderRadius: "12px",
+        fontWeight: "bold",
+        fontSize: "0.9rem",
+        cursor: "pointer",
+        boxShadow: "0 4px 12px rgba(79, 70, 229, 0.2)",
+        transition: "background-color 0.2s ease, transform 0.1s ease",
+      }}
     >
-      {isCopied ? "✓ Copied" : "Copy"}
+      {isCopied ? "Copied" : "CLICK TO COPY LLM OUTPUT"}
     </button>
   );
 }
