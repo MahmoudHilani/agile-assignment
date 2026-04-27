@@ -12,3 +12,9 @@ class DocumentIngestRequest(BaseModel):
 class DocumentIngestResponse(BaseModel):
     accepted: bool
     message: str
+
+
+class DocumentReplaceResponse(BaseModel):
+    accepted: bool
+    filename: str
+    message: str

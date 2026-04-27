@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     app_port: int = 8000
     cors_origins: str = "http://localhost:3000"
     log_level: str = "INFO"
+    secret_key: str = "dev-secret-change-in-production!"
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 60
+    document_storage_path: str = "data/documents"
 
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",
