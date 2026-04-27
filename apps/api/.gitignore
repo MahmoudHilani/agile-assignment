@@ -1,0 +1,2 @@
+data/documents/*
+!data/documents/.gitkeep

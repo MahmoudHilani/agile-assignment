@@ -21,6 +21,27 @@ This FastAPI app is a foundation only. It defines the project shape and placehol
 - speech pipelines
 - storage, auth, or background jobs
 
+## API Endpoints
+
+### `PUT /documents` — Replace company document
+
+Replaces the document used by the LLM with a newly uploaded file. The old document is deleted immediately and the new one takes effect for all subsequent queries without requiring a restart.
+
+**Authentication:** Bearer token with `Admin` role required.
+- No token → `401 Unauthorized`
+- Valid token but non-admin role → `403 Forbidden`
+
+**Accepted formats:** `.pdf`, `.docx`, `.txt`
+
+**Constraints:** Maximum file size 10 MB; file must not be empty.
+
+**Success response `200`:**
+```json
+{ "accepted": true, "filename": "handbook.pdf", "message": "Document 'handbook.pdf' replaced successfully" }
+```
+
+**Error responses:** `401`, `403`, `422` (unsupported format / empty file / oversized file)
+
 ## Commands
 
 ```bash
