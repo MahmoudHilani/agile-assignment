@@ -22,7 +22,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["voice"])
 
-OPENROUTER_API_KEY = "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"
+import os
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 
 def get_answer_from_qwen(question: str) -> str:
     response = requests.post(
