@@ -23,6 +23,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["voice"])
 
 import os
+from dotenv import load_dotenv
+load_dotenv()
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 
 def get_answer_from_qwen(question: str) -> str:
