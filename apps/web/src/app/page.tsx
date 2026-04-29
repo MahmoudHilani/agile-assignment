@@ -1,7 +1,8 @@
 "use client";
 
 import type { DragEvent } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import CopyTextButton from "@/components/CopyTextButton";
 import MessageInput from "@/components/MessageInput";
 
@@ -15,9 +16,16 @@ const SUGGESTIONS = [
 const LLM_OUTPUT_TEXT = "LLM OUTPUT DATA";
 
 export default function Home() {
+  const router = useRouter();
   const [isDragging, setIsDragging] = useState(false);
   const [dragCounter, setDragCounter] = useState(0);
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    if (!localStorage.getItem("admin_token")) {
+      router.push("/login");
+    }
+  }, [router]);
 
   const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
