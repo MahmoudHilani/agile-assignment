@@ -1,4 +1,6 @@
 node_modules/
+.DS_Store
+**/.DS_Store
 apps/web/node_modules/
 apps/web/.next/
 apps/web/out/

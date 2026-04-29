@@ -4,8 +4,12 @@ import type { KeyboardEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import MediaSelectionButton from "@/components/MediaSelectionButton";
 
-export default function MessageInput() {
-  const [message, setMessage] = useState("");
+interface MessageInputProps {
+  message: string;
+  onMessageChange: (message: string) => void;
+}
+
+export default function MessageInput({ message, onMessageChange }: MessageInputProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingPulse, setRecordingPulse] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -43,8 +47,8 @@ export default function MessageInput() {
     if (!trimmed) return;
 
     window.dispatchEvent(new CustomEvent("messageSent", { detail: trimmed }));
-    setMessage("");
-  }, [message]);
+    onMessageChange("");
+  }, [message, onMessageChange]);
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey) {
@@ -87,7 +91,7 @@ export default function MessageInput() {
         if (chunksRef.current.length > 0) {
           const blob = new Blob(chunksRef.current, { type: "audio/webm" });
           window.dispatchEvent(new CustomEvent("audioRecorded", { detail: blob }));
-          setMessage("Voice message recorded");
+          onMessageChange("Voice message recorded");
         }
       };
 
@@ -107,7 +111,7 @@ export default function MessageInput() {
         className="message-textarea"
         placeholder="Type your message..."
         value={message}
-        onChange={(event) => setMessage(event.target.value)}
+        onChange={(event) => onMessageChange(event.target.value)}
         onKeyDown={handleKeyDown}
         rows={1}
         aria-label="Message input"
