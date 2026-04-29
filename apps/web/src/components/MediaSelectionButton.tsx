@@ -116,7 +116,7 @@ export default function MediaSelectionButton({ onFileSelected }: MediaSelectionB
                 onClick={() => removeFile(i)}
                 aria-label={`Remove ${sf.file.name}`}
               >
-                ×
+                x
               </button>
             </div>
           ))}

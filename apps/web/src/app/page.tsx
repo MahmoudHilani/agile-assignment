@@ -1,15 +1,23 @@
-'use client';
+"use client";
 
 import type { DragEvent } from "react";
 import { useState } from "react";
 import CopyTextButton from "@/components/CopyTextButton";
 import MessageInput from "@/components/MessageInput";
 
+const SUGGESTIONS = [
+  "What services does the company offer?",
+  "Tell me about the company portfolio",
+  "What technologies do you specialize in?",
+  "How can I get started with your platform?",
+];
+
 const LLM_OUTPUT_TEXT = "LLM OUTPUT DATA";
 
 export default function Home() {
   const [isDragging, setIsDragging] = useState(false);
   const [dragCounter, setDragCounter] = useState(0);
+  const [message, setMessage] = useState("");
 
   const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -57,6 +65,10 @@ export default function Home() {
     }
   };
 
+  const handleSuggestionClick = (suggestion: string) => {
+    setMessage(suggestion);
+  };
+
   return (
     <main className="page-root">
       <section
@@ -77,7 +89,20 @@ export default function Home() {
         )}
       </section>
 
-      <MessageInput />
+      <section className="prompt-suggestions" aria-label="Suggested prompts">
+        {SUGGESTIONS.map((suggestion) => (
+          <button
+            key={suggestion}
+            type="button"
+            className="prompt-suggestion"
+            onClick={() => handleSuggestionClick(suggestion)}
+          >
+            {suggestion}
+          </button>
+        ))}
+      </section>
+
+      <MessageInput message={message} onMessageChange={setMessage} />
 
       <div className="copy-button-wrapper">
         <CopyTextButton textToCopy={LLM_OUTPUT_TEXT} />
