@@ -4,6 +4,7 @@ node_modules/
 apps/web/node_modules/
 apps/web/.next/
 apps/web/out/
+.vscode/
 .venv/
 apps/api/.venv/
 __pycache__/
