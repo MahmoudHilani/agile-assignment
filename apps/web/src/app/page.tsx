@@ -19,8 +19,10 @@ export default function Home() {
   const router = useRouter();
   const [isDragging, setIsDragging] = useState(false);
   const [dragCounter, setDragCounter] = useState(0);
+  const [isListening, setIsListening] = useState(false);
   const [message, setMessage] = useState("");
 
+  // Master'dan gelen Login kontrolü
   useEffect(() => {
     if (!localStorage.getItem("admin_token")) {
       router.push("/login");
@@ -110,7 +112,12 @@ export default function Home() {
         ))}
       </section>
 
-      <MessageInput message={message} onMessageChange={setMessage} />
+      <MessageInput 
+        message={message} 
+        onMessageChange={setMessage} 
+        isListening={isListening}
+        setIsListening={setIsListening}
+      />
 
       <div className="copy-button-wrapper">
         <CopyTextButton textToCopy={LLM_OUTPUT_TEXT} />
