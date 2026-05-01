@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     app_name: str = "Agile Assignment API"
     app_host: str = "127.0.0.1"
     app_port: int = 8000
-    cors_origins: str = "http://localhost:3000"
+    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
     log_level: str = "INFO"
     secret_key: str = "dev-secret-change-in-production!"
     algorithm: str = "HS256"
