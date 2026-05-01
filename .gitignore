@@ -8,6 +8,8 @@ apps/web/out/
 .venv/
 apps/api/.venv/
 apps/api/data/chroma/
+data/chroma/
+data/documents/
 __pycache__/
 .pytest_cache/
 .mypy_cache/

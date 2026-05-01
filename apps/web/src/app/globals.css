@@ -12,6 +12,28 @@ body {
   background: #f8fafc;
 }
 
+.app-header {
+  position: fixed;
+  top: 18px;
+  left: 18px;
+  z-index: 10;
+}
+
+.company-logo {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.app-content {
+  min-height: 100vh;
+}
+
 .page-root {
   min-height: 100vh;
   width: 100%;
@@ -36,6 +58,98 @@ body {
   gap: 16px;
   text-align: center;
   position: relative;
+}
+
+.login-page {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 96px 24px 40px;
+}
+
+.login-form {
+  width: min(100%, 380px);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 32px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+}
+
+.login-form h1 {
+  font-size: 1.5rem;
+  line-height: 1.2;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.login-field label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.login-field input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0f172a;
+  font: inherit;
+  padding: 10px 12px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.login-field input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16);
+}
+
+.login-error {
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  padding: 10px 12px;
+}
+
+.login-submit {
+  min-height: 44px;
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.login-submit:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.login-submit:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.login-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
 }
 
 .drop-zone h1 {
@@ -64,6 +178,46 @@ body {
   color: #0f172a;
   font-size: 1rem;
   pointer-events: none;
+}
+
+.prompt-suggestions {
+  width: min(100%, 700px);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.prompt-suggestion {
+  min-height: 38px;
+  max-width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #334155;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.2;
+  padding: 9px 14px;
+  text-align: center;
+  transition: border-color 0.15s, background 0.15s, color 0.15s, transform 0.1s;
+}
+
+.prompt-suggestion:hover {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.prompt-suggestion:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.2);
+  outline-offset: 2px;
+}
+
+.prompt-suggestion:active {
+  transform: translateY(1px);
 }
 
 .message-composer {
@@ -140,6 +294,89 @@ body {
 .icon-button:disabled {
   cursor: not-allowed;
   opacity: 0.5;
+}
+
+.retry-btn {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #3730a3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.retry-btn:hover:not(:disabled) {
+  background: #e0e7ff;
+}
+
+.retry-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.retry-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.retry-btn::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: -34px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #0f172a;
+  color: #fff;
+  font-size: 0.72rem;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.retry-btn:hover::after,
+.retry-btn:focus-visible::after {
+  opacity: 1;
+}
+
+.retry-btn.busy {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.status-text {
+  width: min(100%, 700px);
+  color: #475569;
+  font-size: 0.9rem;
+  padding: 0 16px;
+  text-align: center;
+}
+
+.status-text.success {
+  color: #166534;
+}
+
+.status-text.error {
+  color: #991b1b;
+}
+
+.status-text.info {
+  color: #475569;
 }
 
 .mic-btn.recording {
@@ -327,6 +564,14 @@ body {
     align-items: center;
   }
 
+  .prompt-suggestions {
+    justify-content: flex-start;
+  }
+
+  .prompt-suggestion {
+    flex: 1 1 100%;
+  }
+
   .composer-actions {
     grid-column: 1 / -1;
     justify-content: space-between;
@@ -335,5 +580,14 @@ body {
 
   .hint-text {
     white-space: normal;
+  }
+
+  .login-page {
+    align-items: flex-start;
+    padding: 88px 16px 24px;
+  }
+
+  .login-form {
+    padding: 24px;
   }
 }

@@ -13,6 +13,9 @@ interface MessageInputProps {
   onMessageChange: (message: string) => void;
   isListening?: boolean;
   setIsListening?: (val: boolean) => void;
+  canRetry?: boolean;
+  isRetrying?: boolean;
+  onRetry?: () => void;
 }
 
 interface WindowWithWebkitAudioContext extends Window {
@@ -69,10 +72,13 @@ function encodeWav(buffers: Float32Array[], sampleRate: number) {
   return new Blob([view], { type: "audio/wav" });
 }
 
-export default function MessageInput({ 
-  message, 
-  onMessageChange, 
-  setIsListening 
+export default function MessageInput({
+  message,
+  onMessageChange,
+  setIsListening,
+  canRetry = false,
+  isRetrying = false,
+  onRetry,
 }: MessageInputProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingPulse, setRecordingPulse] = useState(false);
@@ -251,9 +257,9 @@ export default function MessageInput({
   return (
     <section className="message-composer" aria-label="Message composer">
       <MediaSelectionButton />
-      
+
       {isRecording ? (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <VoiceWave isListening={isRecording} />
         </div>
       ) : (
@@ -290,6 +296,29 @@ export default function MessageInput({
                 <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
                 <line x1="12" y1="19" x2="12" y2="23" />
                 <line x1="8" y1="23" x2="16" y2="23" />
+              </svg>
+            )}
+          </button>
+          <button
+            type="button"
+            className={`icon-button retry-btn ${isRetrying ? "busy" : ""}`}
+            onClick={onRetry}
+            disabled={!canRetry || isRetrying}
+            aria-label="Try again"
+            title="Retry last query"
+            data-tooltip="Try again"
+          >
+            {isRetrying ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" opacity="0.25" />
+                <path d="M12 2a10 10 0 0 1 10 10" />
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4.93 4.93a10 10 0 0 1 14.14 0L18 6" />
+                <path d="M19 1v5h-5" />
+                <path d="M19.07 19.07a10 10 0 0 1-14.14 0L6 18" />
+                <path d="M5 23v-5h5" />
               </svg>
             )}
           </button>
