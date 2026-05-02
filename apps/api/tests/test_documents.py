@@ -117,3 +117,5 @@ class _settings:
         self.document_storage_path = str(tmp_path)
         self.chroma_db_path = str(tmp_path.parent / f"{tmp_path.name}-chroma")
         self.chroma_collection_name = "company-documents-test"
+        self.embedding_model_name = "nomic-ai/nomic-embed-text-v1.5"
+        self.llm_timeout_seconds = 30.0

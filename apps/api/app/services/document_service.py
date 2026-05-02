@@ -1,10 +1,7 @@
 from __future__ import annotations
 
-import hashlib
 import io
-import math
 import os
-import re
 import tempfile
 import zipfile
 from pathlib import Path
@@ -12,11 +9,11 @@ from xml.etree import ElementTree
 
 from app.core.config import Settings, get_settings
 from app.domain.models import DocumentChunk, SearchResult
+from app.services.embedding_providers import get_embedding_provider
 
 ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt"}
 MAX_FILE_BYTES = 10 * 1024 * 1024  # 10 MB
 CURRENT_DOCUMENT_VERSION = "current"
-EMBEDDING_DIMENSIONS = 64
 _active_document_name: str | None = None
 
 
@@ -117,7 +114,10 @@ def replace_document(filename: str, content: bytes) -> None:
     validate_size(content)
     text = parse_document(filename, content)
     chunks = build_chunks(filename, text)
-    vectors = embed_texts([chunk.text for chunk in chunks])
+    vectors = get_embedding_provider(settings).embed_texts(
+        [chunk.text for chunk in chunks],
+        mode="document",
+    )
 
     storage = Path(settings.document_storage_path)
     storage.mkdir(parents=True, exist_ok=True)
@@ -149,7 +149,13 @@ def reindex_document(filename: str) -> None:
         raise ValueError("Document does not exist")
     text = parse_document(filename, path.read_bytes())
     chunks = build_chunks(filename, text)
-    _vector_store(settings).replace(chunks, embed_texts([chunk.text for chunk in chunks]))
+    _vector_store(settings).replace(
+        chunks,
+        get_embedding_provider(settings).embed_texts(
+            [chunk.text for chunk in chunks],
+            mode="document",
+        ),
+    )
     _set_active_document(filename)
 
 
@@ -170,7 +176,11 @@ def initialize_document_index(settings: Settings | None = None) -> str | None:
     path = candidates[0]
     text = parse_document(path.name, path.read_bytes())
     chunks = build_chunks(path.name, text)
-    _vector_store(resolved_settings).replace(chunks, embed_texts([chunk.text for chunk in chunks]))
+    vectors = get_embedding_provider(resolved_settings).embed_texts(
+        [chunk.text for chunk in chunks],
+        mode="document",
+    )
+    _vector_store(resolved_settings).replace(chunks, vectors)
     _set_active_document(path.name)
     return path.name
 
@@ -185,7 +195,12 @@ def search_documents(query: str, top_k: int = 5) -> list[SearchResult]:
         raise ValueError("No company document loaded")
     if not query.strip():
         raise ValueError("Query cannot be empty")
-    return _vector_store().search(embed_text(query), top_k)
+    if top_k < 1 or top_k > 25:
+        raise ValueError("top_k must be between 1 and 25")
+
+    settings = get_settings()
+    query_vector = get_embedding_provider(settings).embed_texts([query], mode="query")[0]
+    return _vector_store(settings).search(query_vector, top_k)
 
 
 def parse_document(filename: str, content: bytes) -> str:
@@ -229,23 +244,6 @@ def build_chunks(filename: str, text: str, max_words: int = 120, overlap: int = 
             )
         )
     return chunks
-
-
-def embed_texts(texts: list[str]) -> list[list[float]]:
-    return [embed_text(text) for text in texts]
-
-
-def embed_text(text: str) -> list[float]:
-    vector = [0.0] * EMBEDDING_DIMENSIONS
-    for token in re.findall(r"[a-z0-9]+", text.lower()):
-        digest = hashlib.sha256(token.encode("utf-8")).digest()
-        bucket = int.from_bytes(digest[:4], "big") % EMBEDDING_DIMENSIONS
-        vector[bucket] += 1.0
-
-    magnitude = math.sqrt(sum(value * value for value in vector))
-    if magnitude == 0:
-        return vector
-    return [value / magnitude for value in vector]
 
 
 def _decode_text(content: bytes) -> str:

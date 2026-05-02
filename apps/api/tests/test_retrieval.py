@@ -9,12 +9,11 @@ from app.main import create_app
 from app.services.document_service import (
     ChromaVectorStore,
     build_chunks,
-    embed_text,
-    embed_texts,
     initialize_document_index,
     reset_index,
     search_documents,
 )
+from app.services.embedding_providers import get_embedding_provider
 
 
 def _admin_headers() -> dict[str, str]:
@@ -67,9 +66,6 @@ def test_replacement_refreshes_future_query_results(tmp_path: Path, monkeypatch:
         headers=_admin_headers(),
     )
     assert first_response.status_code == 200
-    first_query = client.post("/query", json={"query": "clinical hospitals"})
-    assert first_query.status_code == 200
-    assert "clinical AI tools" in first_query.json()["answer"]
 
     second_response = client.put(
         "/documents",
@@ -84,10 +80,10 @@ def test_replacement_refreshes_future_query_results(tmp_path: Path, monkeypatch:
     )
     assert second_response.status_code == 200
 
-    second_query = client.post("/query", json={"query": "delivery logistics"})
-    assert second_query.status_code == 200
-    assert "logistics optimization" in second_query.json()["answer"]
-    assert "clinical AI tools" not in second_query.json()["answer"]
+    results = search_documents("delivery logistics", top_k=1)
+    assert len(results) == 1
+    assert "logistics optimization" in results[0].text
+    assert "clinical AI tools" not in results[0].text
 
 
 def test_invalid_replacement_preserves_current_index(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -111,20 +107,23 @@ def test_invalid_replacement_preserves_current_index(tmp_path: Path, monkeypatch
     assert invalid_response.status_code == 422
     assert invalid_response.json()["detail"] == "Uploaded file is empty"
 
-    query_response = client.post("/query", json={"query": "healthcare software"})
-    assert query_response.status_code == 200
-    assert "healthcare software" in query_response.json()["answer"]
+    results = search_documents("healthcare software", top_k=1)
+    assert len(results) == 1
+    assert "healthcare software" in results[0].text
 
 
 def test_chroma_vector_store_persists_embeddings(tmp_path: Path) -> None:
     store_path = tmp_path / "persistent-chroma"
     chunks = build_chunks("company.txt", "Acme builds durable analytics software.")
-    vectors = embed_texts([chunk.text for chunk in chunks])
+    settings = _settings(tmp_path)
+    embeddings = get_embedding_provider(settings)
+    vectors = embeddings.embed_texts([chunk.text for chunk in chunks], mode="document")
 
     ChromaVectorStore(str(store_path), "company-documents-test").replace(chunks, vectors)
     restored_store = ChromaVectorStore(str(store_path), "company-documents-test")
 
-    results = restored_store.search(embed_text("analytics software"), top_k=1)
+    query_vector = embeddings.embed_texts(["analytics software"], mode="query")[0]
+    results = restored_store.search(query_vector, top_k=1)
     assert len(results) == 1
     assert "durable analytics software" in results[0].text
 

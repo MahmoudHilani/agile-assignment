@@ -21,6 +21,12 @@ class Settings(BaseSettings):
     chroma_collection_name: str = "company-documents"
     admin_username: str = "admin"
     admin_password_hash: str = ""
+    ollama_url: str = ""
+    model_name: str = ""
+    embedding_model_name: str = "nomic-ai/nomic-embed-text-v1.5"
+    embedding_trust_remote_code: bool = False
+    trusted_remote_embedding_models: str = "nomic-ai/nomic-embed-text-v1.5"
+    llm_timeout_seconds: float = 30.0
 
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",

@@ -8,8 +8,11 @@ apps/web/out/
 .venv/
 apps/api/.venv/
 apps/api/data/chroma/
+apps/api/data/documents/*
+!apps/api/data/documents/.gitkeep
 data/chroma/
-data/documents/
+data/documents/*
+!data/documents/.gitkeep
 __pycache__/
 .pytest_cache/
 .mypy_cache/
