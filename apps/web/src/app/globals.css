@@ -2,8 +2,6 @@
 
 * {
   box-sizing: border-box;
-  margin: 0;
-  padding: 0;
 }
 
 body {
@@ -224,16 +222,17 @@ body {
 }
 
 .message-composer {
-  width: min(100%, 700px);
+  width: 100%;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: end;
+  align-items: center;
   gap: 12px;
-  padding: 12px 16px;
+  min-height: 78px;
+  padding: 12px 18px;
   border: 1.5px solid #e5e7eb;
   border-radius: 18px;
   background: #ffffff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
 }
 
 .message-textarea {
@@ -256,6 +255,7 @@ body {
 .composer-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 10px;
 }
 
@@ -839,6 +839,7 @@ body {
   .message-composer {
     grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
+    min-height: auto;
   }
 
   .prompt-suggestions {

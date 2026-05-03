@@ -90,7 +90,12 @@ def run_rag_query(query: str, top_k: int) -> tuple[str, list[str]]:
     
     results = search_documents(normalized_query, top_k=top_k)
     prompt = build_rag_prompt(normalized_query, results)
-    answer = get_chat_provider().generate(prompt, results, [])
+    try:
+        answer = get_chat_provider().generate(prompt, results, [])
+    except LLMProviderError:
+        raise
+    except Exception as exc:
+        raise LLMProviderError("LLM provider failed") from exc
     return answer, _sources(results)
 
 
@@ -126,6 +131,7 @@ def build_rag_prompt(query: str, results: Sequence[SearchResult]) -> str:
         context = "No retrieved context."
     return (
         "Answer the question using only the retrieved context. "
+        "If the answer requires counting items explicitly listed in the context, count them. "
         "If the context does not contain the answer, say you do not know.\n\n"
         f"Retrieved context:\n{context}\n\n"
         f"Question:\n{query}\n\n"

@@ -81,6 +81,7 @@ def test_rag_prompt_includes_retrieved_chunks_and_user_query(
     assert len(provider.prompts) == 1
     assert "Acme builds clinical AI tools for hospitals." in provider.prompts[0]
     assert "Which users does Acme serve?" in provider.prompts[0]
+    assert "If the answer requires counting items explicitly listed in the context, count them." in provider.prompts[0]
 
 
 def test_llm_provider_failure_returns_controlled_error(

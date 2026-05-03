@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useSyncExternalStore } from "react";
 
 interface AdminAuthContextType {
   isAdmin: boolean;
@@ -16,21 +16,35 @@ const AdminAuthContext = createContext<AdminAuthContextType>({
   logout: () => {},
 });
 
-export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
-  const [token, setToken] = useState<string | null>(null);
+const ADMIN_TOKEN_KEY = "admin_token";
 
-  useEffect(() => {
-    setToken(localStorage.getItem("admin_token"));
-  }, []);
+function getStoredToken() {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(ADMIN_TOKEN_KEY);
+}
+
+function subscribeToTokenChanges(onStoreChange: () => void) {
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key === ADMIN_TOKEN_KEY) {
+      onStoreChange();
+    }
+  };
+
+  window.addEventListener("storage", handleStorage);
+  return () => window.removeEventListener("storage", handleStorage);
+}
+
+export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
+  const token = useSyncExternalStore(subscribeToTokenChanges, getStoredToken, () => null);
 
   const login = useCallback((newToken: string) => {
-    localStorage.setItem("admin_token", newToken);
-    setToken(newToken);
+    localStorage.setItem(ADMIN_TOKEN_KEY, newToken);
+    window.dispatchEvent(new StorageEvent("storage", { key: ADMIN_TOKEN_KEY, newValue: newToken }));
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem("admin_token");
-    setToken(null);
+    localStorage.removeItem(ADMIN_TOKEN_KEY);
+    window.dispatchEvent(new StorageEvent("storage", { key: ADMIN_TOKEN_KEY, newValue: null }));
   }, []);
 
   return (

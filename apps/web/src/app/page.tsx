@@ -13,6 +13,7 @@ const SUGGESTIONS = [
   "What technologies do you specialize in?",
   "How can I get started with your platform?",
 ];
+const RETRIEVAL_TOP_K = 10;
 
 export default function Home() {
   const [isDragging, setIsDragging] = useState(false);
@@ -25,6 +26,7 @@ export default function Home() {
   const [isListening, setIsListening] = useState(false);
   const [message, setMessage] = useState("");
   const [completion, setCompletion] = useState("");
+  const statusClassName = statusVariant === "error" ? "text-red-600" : "text-green-600";
 
   const sendQuery = useCallback(async (query: string, mode: "send" | "retry") => {
     setIsRetrying(mode === "retry");
@@ -36,7 +38,7 @@ export default function Home() {
       const response = await fetch(`${API_BASE_URL}/query/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, top_k: 5 }),
+        body: JSON.stringify({ query, top_k: RETRIEVAL_TOP_K }),
       });
 
       if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
@@ -94,7 +96,7 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-[#F9FAFB] flex flex-col items-center py-12 px-4">
+    <main className="min-h-screen bg-[#F9FAFB] flex flex-col items-center px-4 pb-12 pt-28">
       <div className="w-full max-w-4xl flex flex-col gap-8">
         
         {/* 1. Header & Dropzone */}
@@ -157,20 +159,18 @@ export default function Home() {
 
         {/* 4. Input Area */}
         <div className="flex flex-col gap-3 w-full max-w-4xl mx-auto">
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-            <MessageInput
-              message={message}
-              onMessageChange={setMessage}
-              isListening={isListening}
-              setIsListening={setIsListening}
-              canRetry={Boolean(lastQuery) && !isSending}
-              isRetrying={isRetrying}
-              onRetry={() => sendQuery(lastQuery!, "retry")}
-            />
-          </div>
+          <MessageInput
+            message={message}
+            onMessageChange={setMessage}
+            isListening={isListening}
+            setIsListening={setIsListening}
+            canRetry={Boolean(lastQuery) && !isSending}
+            isRetrying={isRetrying}
+            onRetry={() => sendQuery(lastQuery!, "retry")}
+          />
           
           {statusMessage && (
-            <div className="text-center text-sm font-medium text-green-600">
+            <div className={`text-center text-sm font-medium ${statusClassName}`}>
               {statusMessage}
             </div>
           )}
