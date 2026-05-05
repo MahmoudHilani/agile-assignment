@@ -15,7 +15,7 @@ class DocumentProcessor(Protocol):
 
 
 class EmbeddingProvider(Protocol):
-    def embed_texts(self, texts: Sequence[str]) -> Sequence[list[float]]: ...
+    def embed_texts(self, texts: Sequence[str], mode: str = "document") -> Sequence[list[float]]: ...
 
 
 class VectorStore(Protocol):

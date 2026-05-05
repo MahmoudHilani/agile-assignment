@@ -64,6 +64,10 @@ Run tests with:
 python -m uv run --project apps/api pytest
 ```
 
+### Admin Auth Note
+
+Admin authentication currently uses an env-configured bcrypt password hash and a bearer JWT stored by the web client in `localStorage`. That is acceptable for this assignment prototype, but it is not a production session model because client-accessible storage can expose the token if the frontend has an XSS issue. Replace it with an httpOnly, secure, sameSite cookie-backed session before production use.
+
 ## Team Extension Points
 
 - Add real HTTP and websocket behavior under `apps/api/app/api/routes`

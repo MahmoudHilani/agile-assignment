@@ -1,0 +1,24 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: uv run --no-project uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      APP_ENV: development
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8000
+      DOCUMENT_STORAGE_PATH: data/documents
+      CHROMA_DB_PATH: data/chroma
+      CHROMA_COLLECTION_NAME: company-documents
+      OLLAMA_URL: ${OLLAMA_URL:-}
+      MODEL_NAME: ${MODEL_NAME:-}
+      EMBEDDING_MODEL_NAME: ${EMBEDDING_MODEL_NAME:-nomic-ai/nomic-embed-text-v1.5}
+      EMBEDDING_TRUST_REMOTE_CODE: ${EMBEDDING_TRUST_REMOTE_CODE:-false}
+      TRUSTED_REMOTE_EMBEDDING_MODELS: ${TRUSTED_REMOTE_EMBEDDING_MODELS:-nomic-ai/nomic-embed-text-v1.5}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH:-}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data

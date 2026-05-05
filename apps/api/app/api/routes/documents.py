@@ -1,13 +1,11 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
+from app.api.dependencies.auth import require_admin
 from app.core.responses import not_implemented_error
 from app.schemas.common import ApiError
-from app.schemas.documents import (
-    CompanyDocumentReplaceRequest,
-    CompanyDocumentReplaceResponse,
-    DocumentIngestRequest,
-)
-from app.services.company_documents import CompanyDocumentError, company_document_service
+from app.schemas.documents import DocumentIngestRequest, DocumentReplaceResponse
+from app.services.document_service import replace_document, validate_filename, validate_size
+from app.services.embedding_providers import EmbeddingProviderError
 
 router = APIRouter(tags=["documents"])
 
@@ -21,24 +19,32 @@ def ingest_document(_: DocumentIngestRequest) -> ApiError:
     return not_implemented_error("Document ingestion")
 
 
-@router.post(
-    "/admin/company-document",
-    response_model=CompanyDocumentReplaceResponse,
-    status_code=status.HTTP_200_OK,
-)
-def replace_company_document(
-    request: CompanyDocumentReplaceRequest,
-) -> CompanyDocumentReplaceResponse:
+@router.put("/documents", response_model=DocumentReplaceResponse)
+async def replace_document_endpoint(
+    file: UploadFile = File(...),
+    _admin: dict = Depends(require_admin),
+) -> DocumentReplaceResponse:
+    if not file.filename:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="No filename provided")
     try:
-        document = company_document_service.replace(
-            request.source_name,
-            request.content.encode("utf-8"),
-        )
-    except CompanyDocumentError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-
-    return CompanyDocumentReplaceResponse(
-        message="Company document replaced",
-        source_name=document.source_name,
-        chunks_indexed=document.chunks_indexed,
+        validate_filename(file.filename)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc))
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Uploaded file is empty")
+    try:
+        validate_size(content)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc))
+    try:
+        replace_document(file.filename, content)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc))
+    except EmbeddingProviderError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Embedding provider failed") from exc
+    return DocumentReplaceResponse(
+        accepted=True,
+        filename=file.filename,
+        message=f"Document '{file.filename}' replaced successfully",
     )
