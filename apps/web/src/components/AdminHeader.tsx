@@ -122,7 +122,7 @@ export default function AdminHeader() {
         <div className="relative">
           <button
             type="button"
-            className="rounded-lg border-2 border-blue-600 bg-transparent px-3.5 py-2 text-sm text-blue-600 transition-colors hover:bg-blue-50"
+            className="rounded-lg border-2 border-emerald-600 bg-transparent px-3.5 py-2 text-sm text-emerald-700 transition-colors hover:bg-emerald-50"
             onClick={() => setShowUpload((v) => !v)}
             aria-expanded={showUpload}
           >
@@ -184,7 +184,7 @@ export default function AdminHeader() {
 
                 <button
                   type="submit"
-                  className="w-full rounded-lg border-0 bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="w-full rounded-lg border-0 bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                   disabled={!replaceFile || replaceStatus === "uploading"}
                 >
                   {replaceStatus === "uploading" ? "Uploading…" : "Upload Document"}
@@ -214,7 +214,7 @@ export default function AdminHeader() {
 
   return (
     <div className="ml-auto flex items-center gap-3">
-      <button type="button" className="rounded-lg border-2 border-blue-600 bg-transparent px-3.5 py-2 text-sm text-blue-600 transition-colors hover:bg-blue-50" onClick={() => router.push("/login")}>
+      <button type="button" className="rounded-lg border-2 border-emerald-600 bg-transparent px-3.5 py-2 text-sm text-emerald-700 transition-colors hover:bg-emerald-50" onClick={() => router.push("/login")}>
         Admin Login
       </button>
     </div>

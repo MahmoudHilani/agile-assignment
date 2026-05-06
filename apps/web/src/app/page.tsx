@@ -51,6 +51,7 @@ export default function Home() {
   const [isListening, setIsListening] = useState(false);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(true);
   const messagesRef = useRef<ChatMessage[]>([]);
   const activeControllerRef = useRef<AbortController | null>(null);
 
@@ -154,9 +155,9 @@ export default function Home() {
     setMessage("");
     setIsRetrying(false);
     setIsSending(false);
+    setShowSuggestions(true);
   }, []);
 
-  // Event Listeners
   const handleMessageSent = useCallback((event: Event) => {
     const detail = (event as CustomEvent<string>).detail;
     if (!detail) return;
@@ -168,142 +169,154 @@ export default function Home() {
     return () => window.removeEventListener("messageSent", handleMessageSent as EventListener);
   }, [handleMessageSent]);
 
-  // Drag & Drop Handlers
-  const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
+  const handleDragEnter = (e: DragEvent<HTMLElement>) => {
     e.preventDefault();
     setDragCounter((prev) => prev + 1);
     if (dragCounter === 0) setIsDragging(true);
   };
-  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
+  const handleDragLeave = (e: DragEvent<HTMLElement>) => {
     e.preventDefault();
     setDragCounter((prev) => prev - 1);
     if (dragCounter - 1 === 0) setIsDragging(false);
   };
-  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+  const handleDrop = (e: DragEvent<HTMLElement>) => {
     e.preventDefault();
     setIsDragging(false);
     setDragCounter(0);
     alert("File uploaded!");
   };
 
+  const handleSuggestionClick = (suggestion: string) => {
+    setMessage(suggestion);
+    setShowSuggestions(false);
+  };
+
+  const hasMessages = messages.length > 0;
+  const assistantText = messages
+    .filter((m) => m.role === "assistant" && m.content)
+    .map((m) => m.content)
+    .join("\n\n");
+  const hasAssistantText = Boolean(assistantText) && !isSending;
+
+  const showConversationActions = hasMessages || Boolean(statusMessage);
+
   return (
-    <main className="min-h-screen bg-[#F9FAFB] flex flex-col items-center px-4 pb-12 pt-28">
-      <div className="w-full max-w-4xl flex flex-col gap-8">
-        
-        {/* 1. Header & Dropzone */}
-        <div
-          onDragEnter={handleDragEnter}
-          onDragLeave={handleDragLeave}
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={handleDrop}
-          className={`relative border-2 border-dashed rounded-2xl p-10 transition-all text-center ${
-            isDragging ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-white"
-          }`}
-        >
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Ask anything</h1>
-          <p className="text-gray-500">Drop a file here or use the input below</p>
-        </div>
+    <main
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={handleDrop}
+      className="relative min-h-screen bg-[#F9FAFB] flex flex-col"
+    >
+      <div className="w-full max-w-3xl mx-auto px-4 pt-24 pb-40 flex-1 flex flex-col gap-10">
 
-        {/* 2. Suggestions */}
-        <div className="flex flex-wrap justify-center gap-2">
-          {SUGGESTIONS.map((s) => (
-            <button
-              key={s}
-              onClick={() => setMessage(s)}
-              className="px-4 py-2 bg-white border border-gray-200 rounded-full text-sm text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-colors shadow-sm"
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-
-        {/* 3. Conversation Box (The RAG UI) */}
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm min-h-[250px] flex flex-col relative overflow-hidden">
-          {/* Box Header */}
-          <div className="px-6 py-3 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Conversation</span>
-            <div className="flex items-center gap-3">
-              {messages.some((chatMessage) => chatMessage.role === "assistant" && chatMessage.content) && !isSending && (
-                <div className="scale-90 transform-gpu origin-right">
-                  <CopyTextButton
-                    textToCopy={messages
-                      .filter((chatMessage) => chatMessage.role === "assistant" && chatMessage.content)
-                      .map((chatMessage) => chatMessage.content)
-                      .join("\n\n")}
-                  />
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={startNewChat}
-                disabled={messages.length === 0 && !statusMessage && !message}
-                className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-xs font-semibold text-gray-600 hover:border-blue-300 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                New chat
-              </button>
-            </div>
+        {/* Hero: only shown on empty state. */}
+        {!hasMessages && (
+          <div className="text-center mt-10">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Ask anything</h1>
+            <p className="text-gray-500">Drop a file anywhere on the page or type below</p>
           </div>
+        )}
 
-          {/* Box Content */}
-          <div className="p-6 flex-1">
-            {messages.length > 0 ? (
-              <div className="flex flex-col gap-5">
-                {messages.map((chatMessage) => (
-                  <div
-                    key={chatMessage.id}
-                    className={`flex ${chatMessage.role === "user" ? "justify-end" : "justify-start"}`}
-                  >
-                    <div
-                      className={`max-w-[85%] rounded-xl px-4 py-3 text-sm leading-6 ${
-                        chatMessage.role === "user"
-                          ? "bg-blue-600 text-white"
-                          : "border border-gray-100 bg-gray-50 text-gray-700"
-                      }`}
-                    >
-                      {chatMessage.content ? (
-                        chatMessage.role === "assistant" ? (
-                          <MarkdownResponse content={chatMessage.content} />
-                        ) : (
-                          <p className="whitespace-pre-wrap">{chatMessage.content}</p>
-                        )
-                      ) : (
-                        <div className="flex items-center gap-2 text-gray-400 animate-pulse">
-                          <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                          <span>AI is thinking...</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="h-full flex items-center justify-center text-gray-300 italic text-sm">
-                Waiting for your question...
+        {/* Suggestions: hidden once clicked or a chat starts. */}
+        {showSuggestions && !hasMessages && (
+          <div className="flex flex-wrap justify-center gap-2">
+            {SUGGESTIONS.map((s) => (
+              <button
+                key={s}
+                onClick={() => handleSuggestionClick(s)}
+                className="px-4 py-2 bg-white border border-gray-200 rounded-full text-sm text-gray-600 hover:border-emerald-400 hover:text-emerald-600 transition-colors shadow-sm"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {showConversationActions && (
+          <div className="flex flex-wrap items-center justify-end gap-3 -mb-4">
+            {hasAssistantText && (
+              <div className="scale-90 transform-gpu origin-right">
+                <CopyTextButton textToCopy={assistantText} />
               </div>
             )}
+            <button
+              type="button"
+              onClick={startNewChat}
+              title="Start a new conversation"
+              className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 shadow-sm transition-all duration-150 hover:border-emerald-400 hover:text-emerald-600 hover:shadow-md"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M12 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7" />
+                <path d="M18.375 2.625a1 1 0 0 1 3 3l-9.75 9.75L8 17l1.625-3.625z" />
+              </svg>
+              New chat
+            </button>
+          </div>
+        )}
+
+        {/* Messages */}
+        {hasMessages && (
+          <div className="flex flex-col gap-8">
+            {messages.map((chatMessage) => (
+              <div
+                key={chatMessage.id}
+                className={`flex ${chatMessage.role === "user" ? "justify-end" : "justify-start"}`}
+              >
+                {chatMessage.role === "user" ? (
+                  <div className="max-w-[80%] rounded-2xl px-5 py-3 text-base leading-7 bg-emerald-600 text-white">
+                    <p className="whitespace-pre-wrap">{chatMessage.content}</p>
+                  </div>
+                ) : (
+                  <div className="w-full">
+                    {chatMessage.content ? (
+                      <MarkdownResponse content={chatMessage.content} />
+                    ) : (
+                      <div className="flex items-center gap-2 text-gray-400 animate-pulse py-1">
+                        <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
+                        <div className="w-2 h-2 bg-emerald-400 rounded-full animation-delay-150"></div>
+                        <div className="w-2 h-2 bg-emerald-400 rounded-full animation-delay-300"></div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {statusMessage && (
+          <div className="text-center text-sm font-medium text-red-600">
+            {statusMessage}
+          </div>
+        )}
+      </div>
+
+      {/* Sticky input bar */}
+      <div className="fixed bottom-0 left-0 right-0 pointer-events-none">
+        <div className="bg-gradient-to-t from-[#F9FAFB] via-[#F9FAFB] to-transparent pt-8 pb-6">
+          <div className="w-full max-w-3xl mx-auto px-4 pointer-events-auto">
+            <MessageInput
+              message={message}
+              onMessageChange={setMessage}
+              isListening={isListening}
+              setIsListening={setIsListening}
+              canRetry={Boolean(lastQuery) && !isSending}
+              isRetrying={isRetrying}
+              onRetry={() => lastQuery && sendQuery(lastQuery.query, "retry")}
+            />
           </div>
         </div>
-
-        {/* 4. Input Area */}
-        <div className="flex flex-col gap-3 w-full max-w-4xl mx-auto">
-          <MessageInput
-            message={message}
-            onMessageChange={setMessage}
-            isListening={isListening}
-            setIsListening={setIsListening}
-            canRetry={Boolean(lastQuery) && !isSending}
-            isRetrying={isRetrying}
-            onRetry={() => lastQuery && sendQuery(lastQuery.query, "retry")}
-          />
-          
-          {statusMessage && (
-            <div className="text-center text-sm font-medium text-red-600">
-              {statusMessage}
-            </div>
-          )}
-        </div>
-
       </div>
+
+      {/* Full-screen drag overlay */}
+      {isDragging && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-emerald-500/10 backdrop-blur-sm pointer-events-none">
+          <div className="px-8 py-6 rounded-2xl border-2 border-dashed border-emerald-500 bg-white/90 shadow-lg">
+            <p className="text-lg font-semibold text-emerald-600">Drop file to upload</p>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
