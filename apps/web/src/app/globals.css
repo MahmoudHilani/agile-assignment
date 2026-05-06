@@ -21,14 +21,24 @@ body {
 }
 
 .company-logo {
-  width: 48px;
-  height: 48px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  border-radius: 14px;
-  background: #ffffff;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  gap: 10px;
+  color: #047857;
+}
+
+.company-mark {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+}
+
+.company-name {
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 750;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .app-content {
@@ -115,8 +125,8 @@ body {
 }
 
 .login-field input:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16);
+  border-color: #059669;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.16);
 }
 
 .login-error {
@@ -132,7 +142,7 @@ body {
   min-height: 44px;
   border: none;
   border-radius: 8px;
-  background: #2563eb;
+  background: #059669;
   color: #ffffff;
   cursor: pointer;
   font: inherit;
@@ -141,7 +151,7 @@ body {
 }
 
 .login-submit:hover:not(:disabled) {
-  background: #1d4ed8;
+  background: #047857;
 }
 
 .login-submit:active:not(:disabled) {
@@ -172,7 +182,7 @@ body {
   position: absolute;
   inset: 0;
   border-radius: 18px;
-  background: rgba(99, 102, 241, 0.14);
+  background: rgba(16, 185, 129, 0.14);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -207,13 +217,13 @@ body {
 }
 
 .prompt-suggestion:hover {
-  border-color: #2563eb;
-  background: #eff6ff;
-  color: #1d4ed8;
+  border-color: #059669;
+  background: #ecfdf5;
+  color: #047857;
 }
 
 .prompt-suggestion:focus-visible {
-  outline: 3px solid rgba(37, 99, 235, 0.2);
+  outline: 3px solid rgba(5, 150, 105, 0.2);
   outline-offset: 2px;
 }
 
@@ -319,8 +329,8 @@ body {
   width: 36px;
   height: 36px;
   border-radius: 999px;
-  background: #eef2ff;
-  color: #3730a3;
+  background: #ecfdf5;
+  color: #047857;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -330,7 +340,7 @@ body {
 }
 
 .retry-btn:hover:not(:disabled) {
-  background: #e0e7ff;
+  background: #d1fae5;
 }
 
 .retry-btn:active:not(:disabled) {
@@ -403,7 +413,7 @@ body {
 }
 
 .send-btn.active {
-  background: #2563eb;
+  background: #059669;
   color: #ffffff;
 }
 
@@ -482,13 +492,13 @@ body {
 }
 
 .markdown-response a {
-  color: #2563eb;
+  color: #047857;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 .markdown-response a:hover {
-  color: #1d4ed8;
+  color: #065f46;
 }
 
 .markdown-response code {
@@ -528,13 +538,13 @@ body {
 }
 
 .admin-login-btn {
-  border: 1.5px solid #2563eb;
+  border: 1.5px solid #059669;
   background: transparent;
-  color: #2563eb;
+  color: #047857;
 }
 
 .admin-login-btn:hover {
-  background: #eff6ff;
+  background: #ecfdf5;
 }
 
 .admin-logout-btn {
@@ -555,9 +565,9 @@ body {
 .doc-replace-trigger-btn {
   padding: 7px 14px;
   border-radius: 8px;
-  border: 1.5px solid #2563eb;
+  border: 1.5px solid #059669;
   background: transparent;
-  color: #2563eb;
+  color: #047857;
   font: inherit;
   font-size: 0.875rem;
   cursor: pointer;
@@ -565,7 +575,7 @@ body {
 }
 
 .doc-replace-trigger-btn:hover {
-  background: #eff6ff;
+  background: #ecfdf5;
 }
 
 .doc-replace-dropdown {
@@ -619,20 +629,20 @@ body {
 
 .file-picker-zone:hover,
 .file-picker-zone:focus-visible {
-  border-color: #2563eb;
-  background: #eff6ff;
+  border-color: #059669;
+  background: #ecfdf5;
 }
 
 .file-picker-zone.dragging {
-  border-color: #2563eb;
-  background: #dbeafe;
+  border-color: #059669;
+  background: #d1fae5;
 }
 
 .file-picker-zone.has-file {
   cursor: default;
   border-style: solid;
-  border-color: #93c5fd;
-  background: #eff6ff;
+  border-color: #6ee7b7;
+  background: #ecfdf5;
 }
 
 .file-picker-upload-icon {
@@ -643,7 +653,7 @@ body {
 .file-picker-zone:hover .file-picker-upload-icon,
 .file-picker-zone:focus-visible .file-picker-upload-icon,
 .file-picker-zone.dragging .file-picker-upload-icon {
-  color: #2563eb;
+  color: #059669;
 }
 
 .file-picker-prompt {
@@ -654,7 +664,7 @@ body {
 
 .file-picker-zone:hover .file-picker-prompt,
 .file-picker-zone.dragging .file-picker-prompt {
-  color: #1d4ed8;
+  color: #047857;
 }
 
 .file-picker-hint {
@@ -670,7 +680,7 @@ body {
 }
 
 .file-picker-file-icon {
-  color: #2563eb;
+  color: #059669;
   flex-shrink: 0;
   display: flex;
 }
@@ -679,7 +689,7 @@ body {
   flex: 1;
   font-size: 0.82rem;
   font-weight: 600;
-  color: #1e40af;
+  color: #065f46;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -692,8 +702,8 @@ body {
   height: 20px;
   border: none;
   border-radius: 50%;
-  background: #bfdbfe;
-  color: #1d4ed8;
+  background: #a7f3d0;
+  color: #047857;
   font-size: 0.7rem;
   line-height: 1;
   cursor: pointer;
@@ -705,14 +715,14 @@ body {
 }
 
 .file-picker-clear:hover {
-  background: #93c5fd;
+  background: #6ee7b7;
 }
 
 .doc-replace-panel {
   width: min(100%, 480px);
   padding: 24px 28px;
   border-radius: 18px;
-  border: 2px dashed #2563eb;
+  border: 2px dashed #059669;
   background: #ffffff;
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
   display: flex;
@@ -746,7 +756,7 @@ body {
   padding: 10px 18px;
   border: none;
   border-radius: 8px;
-  background: #2563eb;
+  background: #059669;
   color: #ffffff;
   font: inherit;
   font-size: 0.875rem;
@@ -756,7 +766,7 @@ body {
 }
 
 .doc-replace-btn:hover:not(:disabled) {
-  background: #1d4ed8;
+  background: #047857;
 }
 
 .doc-replace-btn:disabled {
@@ -868,11 +878,11 @@ body {
   align-items: center;
   gap: 6px;
   padding: 4px 10px 4px 8px;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
   border-radius: 20px;
   font-size: 13px;
-  color: #1d4ed8;
+  color: #047857;
   max-width: 220px;
 }
 
@@ -897,7 +907,7 @@ body {
   border: none;
   background: none;
   cursor: pointer;
-  color: #3b82f6;
+  color: #10b981;
   font-size: 16px;
   line-height: 1;
   padding: 0;
@@ -907,7 +917,7 @@ body {
 }
 
 .media-chip-remove:hover {
-  background: #dbeafe;
+  background: #d1fae5;
 }
 
 @media (max-width: 640px) {
