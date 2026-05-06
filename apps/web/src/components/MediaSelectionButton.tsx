@@ -1,18 +1,28 @@
 "use client";
 
-import type { ChangeEvent, ReactNode } from "react";
 import { useRef, useState } from "react";
 
-type MediaType = "image" | "document" | "audio" | "video";
+type MediaType = "image" | "document" | "audio" | "video" | "pdf";
 
 interface MediaOption {
   type: MediaType;
   label: string;
   accept: string;
-  icon: ReactNode;
+  icon: React.ReactNode;
 }
 
 const MEDIA_OPTIONS: MediaOption[] = [
+  {
+    type: "pdf",
+    label: "PDF",
+    accept: "application/pdf",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
+      </svg>
+    ),
+  },
   {
     type: "image",
     label: "Image",
@@ -28,14 +38,13 @@ const MEDIA_OPTIONS: MediaOption[] = [
   {
     type: "document",
     label: "Document",
-    accept: ".pdf,.doc,.docx,.txt,.md",
+    accept: ".doc,.docx,.txt,.md",
     icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
         <polyline points="14 2 14 8 20 8" />
         <line x1="16" y1="13" x2="8" y2="13" />
         <line x1="16" y1="17" x2="8" y2="17" />
-        <polyline points="10 9 9 9 8 9" />
       </svg>
     ),
   },
@@ -71,9 +80,10 @@ interface SelectedFile {
 
 interface MediaSelectionButtonProps {
   onFileSelected?: (selected: SelectedFile) => void;
+  onPdfSelected?: (file: File) => void;
 }
 
-export default function MediaSelectionButton({ onFileSelected }: MediaSelectionButtonProps) {
+export default function MediaSelectionButton({ onFileSelected, onPdfSelected }: MediaSelectionButtonProps) {
   const [open, setOpen] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -88,12 +98,16 @@ export default function MediaSelectionButton({ onFileSelected }: MediaSelectionB
     }
   };
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !currentTypeRef.current) return;
-    const selected: SelectedFile = { type: currentTypeRef.current.type, file };
-    setSelectedFiles((prev) => [...prev, selected]);
-    onFileSelected?.(selected);
+    if (currentTypeRef.current.type === "pdf" && onPdfSelected) {
+      onPdfSelected(file);
+    } else {
+      const selected: SelectedFile = { type: currentTypeRef.current.type, file };
+      setSelectedFiles((prev) => [...prev, selected]);
+      onFileSelected?.(selected);
+    }
     e.target.value = "";
   };
 
@@ -102,22 +116,16 @@ export default function MediaSelectionButton({ onFileSelected }: MediaSelectionB
   };
 
   return (
-    <div className="media-selection-wrapper">
+    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
       {selectedFiles.length > 0 && (
-        <div className="media-chips" aria-label="Attached files">
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
           {selectedFiles.map((sf, i) => (
             <div key={i} className="media-chip">
               <span className="media-chip-icon">
                 {MEDIA_OPTIONS.find((o) => o.type === sf.type)?.icon}
               </span>
               <span className="media-chip-name">{sf.file.name}</span>
-              <button
-                className="media-chip-remove"
-                onClick={() => removeFile(i)}
-                aria-label={`Remove ${sf.file.name}`}
-              >
-                x
-              </button>
+              <button className="media-chip-remove" onClick={() => removeFile(i)}>×</button>
             </div>
           ))}
         </div>
@@ -125,13 +133,9 @@ export default function MediaSelectionButton({ onFileSelected }: MediaSelectionB
 
       <div className="media-dropdown-container">
         <button
-          type="button"
           className="media-selection-btn-plus"
           onClick={() => setOpen((v) => !v)}
-          aria-haspopup="listbox"
-          aria-expanded={open}
           aria-label="Attach media"
-          title="Attach media"
         >
           +
         </button>
@@ -139,15 +143,9 @@ export default function MediaSelectionButton({ onFileSelected }: MediaSelectionB
         {open && (
           <>
             <div className="media-backdrop" onClick={() => setOpen(false)} />
-            <ul className="media-dropdown" role="listbox" aria-label="Select media type">
+            <ul className="media-dropdown" role="listbox">
               {MEDIA_OPTIONS.map((option) => (
-                <li
-                  key={option.type}
-                  role="option"
-                  aria-selected="false"
-                  className="media-dropdown-item"
-                  onClick={() => handleOptionClick(option)}
-                >
+                <li key={option.type} role="option" className="media-dropdown-item" onClick={() => handleOptionClick(option)}>
                   <span className="media-item-icon">{option.icon}</span>
                   <span>{option.label}</span>
                 </li>
@@ -157,12 +155,7 @@ export default function MediaSelectionButton({ onFileSelected }: MediaSelectionB
         )}
       </div>
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        style={{ display: "none" }}
-        onChange={handleFileChange}
-      />
+      <input ref={fileInputRef} type="file" style={{ display: "none" }} onChange={handleFileChange} />
     </div>
   );
 }
