@@ -1,15 +1,18 @@
+"use client";
+
 import Image from "next/image";
 
 export default function CompanyLogo() {
   return (
-    <div className="company-logo">
+    <div className="company-header">
       <Image
         src="/logo.jpeg"
         alt="Company Logo"
-        width={48}
-        height={48}
-        style={{ borderRadius: "10px", objectFit: "contain" }}
+        width={36}
+        height={36}
+        className="company-logo-img"
       />
+      <span className="company-name">AgileMind</span>
     </div>
   );
 }
