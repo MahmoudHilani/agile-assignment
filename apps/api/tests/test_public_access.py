@@ -8,7 +8,10 @@ client = TestClient(app)
 
 
 def test_query_requires_no_auth(monkeypatch) -> None:
-    monkeypatch.setattr("app.api.routes.query.run_rag_query", lambda query, top_k, history=(): ("answer", []))
+    monkeypatch.setattr(
+        "app.api.routes.query.run_rag_query",
+        lambda query, top_k, history=(), document_context=None: ("answer", []),
+    )
     response = client.post("/query", json={"query": "What does the company do?"})
     assert response.status_code == 200
 

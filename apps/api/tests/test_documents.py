@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 
 from app.core.security import create_access_token
 from app.main import app
-from app.services.document_service import MAX_FILE_BYTES
+from app.services.document_service import MAX_FILE_BYTES, get_pdf_context
 
 client = TestClient(app)
 
@@ -17,6 +17,44 @@ def make_token(role: str) -> str:
 
 def _txt_file(content: bytes = b"hello world") -> dict:
     return {"file": ("doc.txt", io.BytesIO(content), "text/plain")}
+
+
+def _pdf_file(text: str = "PDF context for queries") -> dict:
+    import fitz
+
+    document = fitz.open()
+    page = document.new_page()
+    page.insert_text((72, 72), text)
+    content = document.tobytes()
+    document.close()
+    return {"file": ("context.pdf", io.BytesIO(content), "application/pdf")}
+
+
+def test_parse_pdf_valid_file_returns_text() -> None:
+    response = client.post("/documents/parse-pdf", files=_pdf_file("Company PDF context"))
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["filename"] == "context.pdf"
+    assert get_pdf_context(body["document_context_id"]) is not None
+    assert "Company PDF context" in get_pdf_context(body["document_context_id"])
+    assert body["mime_type"] == "application/pdf"
+
+
+def test_parse_pdf_rejects_non_pdf() -> None:
+    response = client.post("/documents/parse-pdf", files=_txt_file())
+
+    assert response.status_code == 422
+
+
+def test_parse_pdf_rejects_oversized_file() -> None:
+    oversized = b"x" * (MAX_FILE_BYTES + 1)
+    response = client.post(
+        "/documents/parse-pdf",
+        files={"file": ("big.pdf", io.BytesIO(oversized), "application/pdf")},
+    )
+
+    assert response.status_code == 422
 
 
 def test_replace_no_auth_returns_401() -> None:

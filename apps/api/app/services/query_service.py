@@ -165,8 +165,9 @@ def run_rag_query(
     query: str,
     top_k: int,
     history: Sequence[ChatTurn] = (),
+    document_context: str | None = None,
 ) -> tuple[str, list[str]]:
-    rag_request = _build_rag_request(query, top_k, history)
+    rag_request = _build_rag_request(query, top_k, history, document_context)
     if rag_request is None:
         return OFF_TOPIC_RESPONSE, []
 
@@ -187,9 +188,10 @@ async def run_rag_query_stream(
     query: str,
     top_k: int,
     history: Sequence[ChatTurn] = (),
+    document_context: str | None = None,
 ) -> AsyncGenerator[str, None]:
     try:
-        rag_request = _build_rag_request(query, top_k, history)
+        rag_request = _build_rag_request(query, top_k, history, document_context)
         if rag_request is None:
             yield OFF_TOPIC_RESPONSE
             return
@@ -211,17 +213,24 @@ def _build_rag_request(
     query: str,
     top_k: int,
     history: Sequence[ChatTurn] = (),
+    document_context: str | None = None,
 ) -> RagRequest | None:
     normalized_query = query.strip()
     if not normalized_query:
         raise ValueError("Query cannot be empty")
 
     recent_history = _recent_history(history)
-    if not is_customer_company_query(normalized_query, recent_history):
+    normalized_document_context = (document_context or "").strip()
+    if not normalized_document_context and not is_customer_company_query(normalized_query, recent_history):
         return None
 
     results = search_documents(normalized_query, top_k=top_k)
-    prompt = build_rag_prompt(normalized_query, results, recent_history)
+    prompt = build_rag_prompt(
+        normalized_query,
+        results,
+        recent_history,
+        document_context=normalized_document_context,
+    )
     return RagRequest(prompt=prompt, results=results, history=recent_history)
 
 
@@ -229,6 +238,7 @@ def build_rag_prompt(
     query: str,
     results: Sequence[SearchResult],
     history: Sequence[ChatTurn] = (),
+    document_context: str = "",
 ) -> str:
     context = "\n\n".join(
         f"Company knowledge {index + 1}:\n{result.text}"
@@ -236,6 +246,7 @@ def build_rag_prompt(
     )
     if not context:
         context = "No retrieved context."
+    uploaded_context = document_context.strip() or "No uploaded PDF context."
     conversation = _format_history(_recent_history(history))
     return (
         "You are a customer-facing company overview assistant for the website frontend. "
@@ -263,10 +274,13 @@ def build_rag_prompt(
         "When project details are incomplete, give a brief relevant overview and encourage the user "
         "to contact the team for tailored advice. "
         "If the answer requires counting items explicitly listed in the context, count them. "
+        "When uploaded PDF context is present, use it as private context for the current user query. "
+        "Do not mention that a PDF was uploaded unless the user asks about the file itself. "
         "If the context does not contain the answer, say you do not know and invite the user "
         "to share more project details or contact the company through the available website channels. "
         "Keep the response concise, clear, and customer-ready.\n\n"
         f"Retrieved context:\n{context}\n\n"
+        f"Uploaded PDF context:\n{uploaded_context}\n\n"
         f"Conversation so far:\n{conversation}\n\n"
         f"Question:\n{query}\n\n"
         "Answer:"

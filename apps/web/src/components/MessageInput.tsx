@@ -2,7 +2,7 @@
 
 import type { KeyboardEvent } from "react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import MediaSelectionButton from "@/components/MediaSelectionButton";
+import MediaSelectionButton, { type SelectedFile } from "@/components/MediaSelectionButton";
 import VoiceWave from "@/components/VoiceWave";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
@@ -17,6 +17,16 @@ interface MessageInputProps {
 
 interface WindowWithWebkitAudioContext extends Window {
   webkitAudioContext?: typeof AudioContext;
+}
+
+interface PdfParseResponse {
+  filename: string;
+  document_context_id: string;
+}
+
+interface ParsedPdf {
+  filename: string;
+  contextId: string;
 }
 
 function mergeAudioBuffers(buffers: Float32Array[]) {
@@ -77,7 +87,10 @@ export default function MessageInput({
   const [isRecording, setIsRecording] = useState(false);
   const [recordingPulse, setRecordingPulse] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [isParsingPdf, setIsParsingPdf] = useState(false);
   const [transcriptionError, setTranscriptionError] = useState("");
+  const [pdfParseError, setPdfParseError] = useState("");
+  const [parsedPdf, setParsedPdf] = useState<ParsedPdf | null>(null);
   const [isMultiline, setIsMultiline] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -139,11 +152,54 @@ export default function MessageInput({
 
   const handleSend = useCallback(() => {
     const trimmed = message.trim();
-    if (!trimmed) return;
+    if (!trimmed || isParsingPdf || isTranscribing) return;
 
-    window.dispatchEvent(new CustomEvent("messageSent", { detail: trimmed }));
+    window.dispatchEvent(new CustomEvent("messageSent", {
+      detail: {
+        message: trimmed,
+        documentContextId: parsedPdf?.contextId,
+      },
+    }));
     onMessageChange("");
-  }, [message, onMessageChange]);
+  }, [isParsingPdf, isTranscribing, message, onMessageChange, parsedPdf]);
+
+  const handleFileSelected = useCallback(async (selected: SelectedFile) => {
+    const { file } = selected;
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    if (!isPdf) return;
+
+    setIsParsingPdf(true);
+    setPdfParseError("");
+    setParsedPdf(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch(`${API_BASE_URL}/documents/parse-pdf`, {
+        method: "POST",
+        body: formData,
+      });
+      const payload = await response.json().catch(() => ({})) as Partial<PdfParseResponse> & { detail?: string };
+
+      if (!response.ok) {
+        throw new Error(payload.detail ?? "Could not parse the PDF.");
+      }
+
+      if (!payload.document_context_id) {
+        throw new Error("The PDF did not return a document context.");
+      }
+
+      setParsedPdf({
+        filename: payload.filename ?? file.name,
+        contextId: payload.document_context_id,
+      });
+    } catch (error) {
+      setPdfParseError(error instanceof Error ? error.message : "Could not parse the PDF.");
+    } finally {
+      setIsParsingPdf(false);
+    }
+  }, []);
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey) {
@@ -250,11 +306,35 @@ export default function MessageInput({
   };
 
   return (
-    <section
-      className={`message-composer${isMultiline && !isRecording ? " is-multiline" : ""}`}
-      aria-label="Message composer"
-    >
-      <MediaSelectionButton />
+    <div className="message-composer-shell">
+      <section
+        className={`message-composer${isMultiline && !isRecording ? " is-multiline" : ""}${parsedPdf || isParsingPdf ? " has-pdf" : ""}`}
+        aria-label="Message composer"
+      >
+        {(parsedPdf || isParsingPdf) && (
+          <div className="pdf-context-row" aria-live="polite">
+            <div className={`pdf-context-chip${isParsingPdf ? " is-loading" : ""}`}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+              </svg>
+              <span>{isParsingPdf ? "Parsing PDF..." : parsedPdf?.filename}</span>
+              {parsedPdf && (
+                <button
+                  type="button"
+                  className="pdf-context-remove"
+                  onClick={() => setParsedPdf(null)}
+                  aria-label={`Remove ${parsedPdf.filename}`}
+                  title="Remove PDF"
+                >
+                  x
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        <MediaSelectionButton onFileSelected={handleFileSelected} showSelectedFiles={false} />
 
       {isRecording ? (
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -298,7 +378,7 @@ export default function MessageInput({
             type="button"
             className={`icon-button send-btn ${message.trim() ? "active" : ""}`}
             onClick={handleSend}
-            disabled={!message.trim() || isTranscribing}
+            disabled={!message.trim() || isTranscribing || isParsingPdf}
             aria-label="Send message"
             title="Send message"
           >
@@ -314,6 +394,12 @@ export default function MessageInput({
           {transcriptionError}
         </p>
       )}
-    </section>
+      {pdfParseError && (
+        <p className="voice-error" role="alert">
+          {pdfParseError}
+        </p>
+      )}
+      </section>
+    </div>
   );
 }

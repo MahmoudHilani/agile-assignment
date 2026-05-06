@@ -18,3 +18,10 @@ class DocumentReplaceResponse(BaseModel):
     accepted: bool
     filename: str
     message: str
+
+
+class PdfParseResponse(BaseModel):
+    filename: str
+    document_context_id: str
+    page_count: int | None = None
+    mime_type: str

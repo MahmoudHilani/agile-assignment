@@ -64,16 +64,20 @@ const MEDIA_OPTIONS: MediaOption[] = [
   },
 ];
 
-interface SelectedFile {
+export interface SelectedFile {
   type: MediaType;
   file: File;
 }
 
 interface MediaSelectionButtonProps {
   onFileSelected?: (selected: SelectedFile) => void;
+  showSelectedFiles?: boolean;
 }
 
-export default function MediaSelectionButton({ onFileSelected }: MediaSelectionButtonProps) {
+export default function MediaSelectionButton({
+  onFileSelected,
+  showSelectedFiles = true,
+}: MediaSelectionButtonProps) {
   const [open, setOpen] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -103,7 +107,7 @@ export default function MediaSelectionButton({ onFileSelected }: MediaSelectionB
 
   return (
     <div className="media-selection-wrapper">
-      {selectedFiles.length > 0 && (
+      {showSelectedFiles && selectedFiles.length > 0 && (
         <div className="media-chips" aria-label="Attached files">
           {selectedFiles.map((sf, i) => (
             <div key={i} className="media-chip">

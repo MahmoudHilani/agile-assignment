@@ -3,8 +3,14 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from app.api.dependencies.auth import require_admin
 from app.core.responses import not_implemented_error
 from app.schemas.common import ApiError
-from app.schemas.documents import DocumentIngestRequest, DocumentReplaceResponse
-from app.services.document_service import replace_document, validate_filename, validate_size
+from app.schemas.documents import DocumentIngestRequest, DocumentReplaceResponse, PdfParseResponse
+from app.services.document_service import (
+    parse_document,
+    replace_document,
+    store_pdf_context,
+    validate_filename,
+    validate_size,
+)
 from app.services.embedding_providers import EmbeddingProviderError
 
 router = APIRouter(tags=["documents"])
@@ -47,4 +53,36 @@ async def replace_document_endpoint(
         accepted=True,
         filename=file.filename,
         message=f"Document '{file.filename}' replaced successfully",
+    )
+
+
+@router.post("/documents/parse-pdf", response_model=PdfParseResponse)
+async def parse_pdf_endpoint(file: UploadFile = File(...)) -> PdfParseResponse:
+    if not file.filename or not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Only PDF files are supported",
+        )
+
+    content = await file.read()
+    if not content:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Uploaded file is empty",
+        )
+
+    try:
+        validate_size(content)
+        extracted_text = parse_document(file.filename, content)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(exc),
+        ) from exc
+
+    return PdfParseResponse(
+        filename=file.filename,
+        document_context_id=store_pdf_context(extracted_text),
+        page_count=None,
+        mime_type="application/pdf",
     )
