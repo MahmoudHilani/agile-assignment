@@ -25,7 +25,7 @@ interface ChatMessage {
   content: string;
 }
 
-interface LastQuery {
+interface RetryTarget {
   query: string;
   history: ChatMessage[];
   assistantMessageId: string;
@@ -44,8 +44,8 @@ function toRequestHistory(messages: ChatMessage[]) {
 export default function Home() {
   const [isDragging, setIsDragging] = useState(false);
   const [dragCounter, setDragCounter] = useState(0);
-  const [lastQuery, setLastQuery] = useState<LastQuery | null>(null);
-  const [isRetrying, setIsRetrying] = useState(false);
+  const [retryTargets, setRetryTargets] = useState<Record<string, RetryTarget>>({});
+  const [retryingMessageId, setRetryingMessageId] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isListening, setIsListening] = useState(false);
@@ -63,13 +63,17 @@ export default function Home() {
     return () => activeControllerRef.current?.abort();
   }, []);
 
-  const sendQuery = useCallback(async (query: string, mode: "send" | "retry") => {
+  const sendQuery = useCallback(async (
+    query: string,
+    mode: "send" | "retry",
+    retryTarget?: RetryTarget
+  ) => {
     activeControllerRef.current?.abort();
 
     const controller = new AbortController();
     activeControllerRef.current = controller;
-    const userHistory = mode === "retry" && lastQuery
-      ? lastQuery.history
+    const userHistory = mode === "retry" && retryTarget
+      ? retryTarget.history
       : messagesRef.current;
     const userMessage: ChatMessage = {
       id: createMessageId(),
@@ -77,20 +81,24 @@ export default function Home() {
       content: query,
     };
     const assistantMessage: ChatMessage = {
-      id: mode === "retry" && lastQuery ? lastQuery.assistantMessageId : createMessageId(),
+      id: mode === "retry" && retryTarget ? retryTarget.assistantMessageId : createMessageId(),
       role: "assistant",
       content: "",
     };
     const requestHistory = toRequestHistory(userHistory);
-
-    setIsRetrying(mode === "retry");
-    setIsSending(true);
-    setStatusMessage(null);
-    setLastQuery({
+    const nextRetryTarget = {
       query,
       history: userHistory,
       assistantMessageId: assistantMessage.id,
-    });
+    };
+
+    setRetryingMessageId(mode === "retry" ? assistantMessage.id : null);
+    setIsSending(true);
+    setStatusMessage(null);
+    setRetryTargets((current) => ({
+      ...current,
+      [assistantMessage.id]: nextRetryTarget,
+    }));
 
     if (mode === "retry") {
       setMessages((current) =>
@@ -140,23 +148,29 @@ export default function Home() {
     } finally {
       if (activeControllerRef.current === controller) {
         activeControllerRef.current = null;
-        setIsRetrying(false);
+        setRetryingMessageId(null);
         setIsSending(false);
       }
     }
-  }, [lastQuery]);
+  }, []);
 
   const startNewChat = useCallback(() => {
     activeControllerRef.current?.abort();
     activeControllerRef.current = null;
     setMessages([]);
-    setLastQuery(null);
+    setRetryTargets({});
     setStatusMessage(null);
     setMessage("");
-    setIsRetrying(false);
+    setRetryingMessageId(null);
     setIsSending(false);
     setShowSuggestions(true);
   }, []);
+
+  const handleRetry = useCallback((assistantMessageId: string) => {
+    const retryTarget = retryTargets[assistantMessageId];
+    if (!retryTarget || isSending) return;
+    void sendQuery(retryTarget.query, "retry", retryTarget);
+  }, [isSending, retryTargets, sendQuery]);
 
   const handleMessageSent = useCallback((event: Event) => {
     const detail = (event as CustomEvent<string>).detail;
@@ -192,12 +206,6 @@ export default function Home() {
   };
 
   const hasMessages = messages.length > 0;
-  const assistantText = messages
-    .filter((m) => m.role === "assistant" && m.content)
-    .map((m) => m.content)
-    .join("\n\n");
-  const hasAssistantText = Boolean(assistantText) && !isSending;
-
   const showConversationActions = hasMessages || Boolean(statusMessage);
 
   return (
@@ -235,11 +243,6 @@ export default function Home() {
 
         {showConversationActions && (
           <div className="flex flex-wrap items-center justify-end gap-3 -mb-4">
-            {hasAssistantText && (
-              <div className="scale-90 transform-gpu origin-right">
-                <CopyTextButton textToCopy={assistantText} />
-              </div>
-            )}
             <button
               type="button"
               onClick={startNewChat}
@@ -270,7 +273,27 @@ export default function Home() {
                 ) : (
                   <div className="w-full">
                     {chatMessage.content ? (
-                      <MarkdownResponse content={chatMessage.content} />
+                      <>
+                        <MarkdownResponse content={chatMessage.content} />
+                        <div className="llm-output-actions" aria-label="Response actions">
+                          <CopyTextButton textToCopy={chatMessage.content} />
+                          <button
+                            type="button"
+                            className={`llm-action-button try-again-button${retryingMessageId === chatMessage.id ? " busy" : ""}`}
+                            onClick={() => handleRetry(chatMessage.id)}
+                            disabled={isSending || !retryTargets[chatMessage.id]}
+                            aria-label="Try again"
+                            title="Try again"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                              <path d="M4.93 4.93a10 10 0 0 1 14.14 0L18 6" />
+                              <path d="M19 1v5h-5" />
+                              <path d="M19.07 19.07a10 10 0 0 1-14.14 0L6 18" />
+                              <path d="M5 23v-5h5" />
+                            </svg>
+                          </button>
+                        </div>
+                      </>
                     ) : (
                       <div className="flex items-center gap-2 text-gray-400 animate-pulse py-1">
                         <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
@@ -301,9 +324,6 @@ export default function Home() {
               onMessageChange={setMessage}
               isListening={isListening}
               setIsListening={setIsListening}
-              canRetry={Boolean(lastQuery) && !isSending}
-              isRetrying={isRetrying}
-              onRetry={() => lastQuery && sendQuery(lastQuery.query, "retry")}
             />
           </div>
         </div>
