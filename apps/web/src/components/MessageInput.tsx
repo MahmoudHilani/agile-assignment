@@ -1,7 +1,7 @@
 "use client";
 
 import type { KeyboardEvent } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import MediaSelectionButton from "@/components/MediaSelectionButton";
 import VoiceWave from "@/components/VoiceWave";
 
@@ -84,6 +84,7 @@ export default function MessageInput({
   const [recordingPulse, setRecordingPulse] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [transcriptionError, setTranscriptionError] = useState("");
+  const [isMultiline, setIsMultiline] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
@@ -93,13 +94,19 @@ export default function MessageInput({
   const sampleRateRef = useRef(0);
   const recordingTimeoutRef = useRef<number | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
     textarea.style.height = "auto";
-    textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`;
-  }, [message]);
+    const { scrollHeight } = textarea;
+    textarea.style.height = `${Math.min(scrollHeight, 200)}px`;
+    setIsMultiline((prev) => {
+      if (scrollHeight > 48) return true;
+      if (prev && message.length > 25) return true;
+      return false;
+    });
+  }, [message, isMultiline]);
 
   useEffect(() => {
     if (!isRecording) return;
@@ -248,14 +255,11 @@ export default function MessageInput({
     }
   };
 
-  const hintText = isRecording
-    ? `Recording. ${MAX_RECORDING_SECONDS} second limit.`
-    : isTranscribing
-      ? "Transcribing audio..."
-      : "Enter to send. Shift+Enter for a new line.";
-
   return (
-    <section className="message-composer" aria-label="Message composer">
+    <section
+      className={`message-composer${isMultiline && !isRecording ? " is-multiline" : ""}`}
+      aria-label="Message composer"
+    >
       <MediaSelectionButton />
 
       {isRecording ? (
@@ -276,9 +280,6 @@ export default function MessageInput({
       )}
 
       <div className="composer-actions">
-        <span className="hint-text">
-          {hintText}
-        </span>
         <div className="button-group">
           <button
             type="button"
