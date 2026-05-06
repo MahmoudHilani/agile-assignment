@@ -444,6 +444,71 @@ body {
   justify-content: center;
 }
 
+.llm-output-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.llm-action-button {
+  height: 36px;
+  width: 36px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: #475569;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0;
+  transition: color 0.15s, transform 0.1s;
+}
+
+.llm-action-button:hover:not(:disabled) {
+  color: #047857;
+}
+
+.llm-action-button:focus-visible {
+  outline: 3px solid rgba(5, 150, 105, 0.2);
+  outline-offset: 2px;
+}
+
+.llm-action-button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.llm-action-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.copy-output-button {
+  width: 36px;
+  padding: 0;
+}
+
+.copy-output-button.copied {
+  color: #15803d;
+}
+
+.read-aloud-button.speaking {
+  color: #047857;
+}
+
+.read-aloud-button.busy svg {
+  animation: spin 1s linear infinite;
+}
+
+.try-again-button.busy svg {
+  animation: spin 1s linear infinite;
+}
+
 .markdown-response {
   max-width: 100%;
   color: #374151;
