@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from app.core.security import create_access_token
 from app.main import app
 from app.services.document_service import MAX_FILE_BYTES, get_pdf_context
+from conftest import make_pdf_bytes
 
 client = TestClient(app)
 
@@ -20,13 +21,7 @@ def _txt_file(content: bytes = b"hello world") -> dict:
 
 
 def _pdf_file(text: str = "PDF context for queries") -> dict:
-    import fitz
-
-    document = fitz.open()
-    page = document.new_page()
-    page.insert_text((72, 72), text)
-    content = document.tobytes()
-    document.close()
+    content = make_pdf_bytes(text)
     return {"file": ("context.pdf", io.BytesIO(content), "application/pdf")}
 
 
@@ -72,7 +67,21 @@ def test_replace_non_admin_returns_403() -> None:
     assert response.status_code == 403
 
 
-def test_replace_valid_admin_txt_returns_200(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_replace_valid_admin_pdf_returns_200(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.services.document_service.get_settings", lambda: _settings(tmp_path))
+    token = make_token("Admin")
+    response = client.put(
+        "/documents",
+        files=_pdf_file("Company handbook content"),
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["accepted"] is True
+    assert body["filename"] == "context.pdf"
+
+
+def test_replace_admin_txt_returns_422(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("app.services.document_service.get_settings", lambda: _settings(tmp_path))
     token = make_token("Admin")
     response = client.put(
@@ -80,10 +89,7 @@ def test_replace_valid_admin_txt_returns_200(tmp_path: Path, monkeypatch: pytest
         files=_txt_file(),
         headers={"Authorization": f"Bearer {token}"},
     )
-    assert response.status_code == 200
-    body = response.json()
-    assert body["accepted"] is True
-    assert body["filename"] == "doc.txt"
+    assert response.status_code == 422
 
 
 def test_replace_invalid_format_returns_422(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -114,7 +120,7 @@ def test_replace_empty_file_returns_422(tmp_path: Path, monkeypatch: pytest.Monk
     token = make_token("Admin")
     response = client.put(
         "/documents",
-        files=_txt_file(content=b""),
+        files={"file": ("empty.pdf", io.BytesIO(b""), "application/pdf")},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 422
@@ -126,7 +132,7 @@ def test_replace_oversized_file_returns_422(tmp_path: Path, monkeypatch: pytest.
     oversized = b"x" * (MAX_FILE_BYTES + 1)
     response = client.put(
         "/documents",
-        files={"file": ("big.txt", io.BytesIO(oversized), "text/plain")},
+        files={"file": ("big.pdf", io.BytesIO(oversized), "application/pdf")},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 422
@@ -137,12 +143,20 @@ def test_replace_overwrites_old_document(tmp_path: Path, monkeypatch: pytest.Mon
     token = make_token("Admin")
     headers = {"Authorization": f"Bearer {token}"}
 
-    client.put("/documents", files={"file": ("old.txt", io.BytesIO(b"old content"), "text/plain")}, headers=headers)
-    client.put("/documents", files={"file": ("new.txt", io.BytesIO(b"new content"), "text/plain")}, headers=headers)
+    client.put(
+        "/documents",
+        files={"file": ("old.pdf", io.BytesIO(make_pdf_bytes("old content")), "application/pdf")},
+        headers=headers,
+    )
+    client.put(
+        "/documents",
+        files={"file": ("new.pdf", io.BytesIO(make_pdf_bytes("new content")), "application/pdf")},
+        headers=headers,
+    )
 
     stored = list(tmp_path.iterdir())
     assert len(stored) == 1
-    assert stored[0].name == "new.txt"
+    assert stored[0].name == "new.pdf"
 
 
 class _settings:

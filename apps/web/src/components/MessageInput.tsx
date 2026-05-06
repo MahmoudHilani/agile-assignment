@@ -166,7 +166,10 @@ export default function MessageInput({
   const handleFileSelected = useCallback(async (selected: SelectedFile) => {
     const { file } = selected;
     const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
-    if (!isPdf) return;
+    if (!isPdf) {
+      setPdfParseError("Only PDF files are supported.");
+      return;
+    }
 
     setIsParsingPdf(true);
     setPdfParseError("");

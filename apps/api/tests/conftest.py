@@ -10,6 +10,17 @@ from app.services.embedding_providers import LocalEmbeddingProvider
 EMBEDDING_DIMENSIONS = 64
 
 
+def make_pdf_bytes(text: str) -> bytes:
+    import fitz
+
+    document = fitz.open()
+    page = document.new_page()
+    page.insert_text((72, 72), text)
+    content = document.tobytes()
+    document.close()
+    return content
+
+
 class FakeSentenceTransformer:
     def __init__(self, model_name: str, trust_remote_code: bool) -> None:
         self.model_name = model_name

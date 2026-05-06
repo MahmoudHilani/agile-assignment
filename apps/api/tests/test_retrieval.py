@@ -14,6 +14,7 @@ from app.services.document_service import (
     search_documents,
 )
 from app.services.embedding_providers import get_embedding_provider
+from conftest import make_pdf_bytes
 
 
 def _admin_headers() -> dict[str, str]:
@@ -45,11 +46,11 @@ def test_initial_document_is_indexed_from_storage(tmp_path: Path, monkeypatch: p
     monkeypatch.setattr("app.services.document_service.get_settings", lambda: settings)
     storage = Path(settings.document_storage_path)
     storage.mkdir(parents=True)
-    (storage / "company.txt").write_text("Acme builds clinical AI tools for hospitals.", encoding="utf-8")
+    (storage / "company.pdf").write_bytes(make_pdf_bytes("Acme builds clinical AI tools for hospitals."))
 
     indexed = initialize_document_index()
 
-    assert indexed == "company.txt"
+    assert indexed == "company.pdf"
     results = search_documents("clinical hospitals", top_k=1)
     assert len(results) == 1
     assert "clinical AI tools" in results[0].text
@@ -62,7 +63,13 @@ def test_replacement_refreshes_future_query_results(tmp_path: Path, monkeypatch:
 
     first_response = client.put(
         "/documents",
-        files={"file": ("company.txt", io.BytesIO(b"Acme builds clinical AI tools for hospitals."), "text/plain")},
+        files={
+            "file": (
+                "company.pdf",
+                io.BytesIO(make_pdf_bytes("Acme builds clinical AI tools for hospitals.")),
+                "application/pdf",
+            )
+        },
         headers=_admin_headers(),
     )
     assert first_response.status_code == 200
@@ -71,9 +78,9 @@ def test_replacement_refreshes_future_query_results(tmp_path: Path, monkeypatch:
         "/documents",
         files={
             "file": (
-                "company.txt",
-                io.BytesIO(b"Acme now provides logistics optimization for delivery fleets."),
-                "text/plain",
+                "company.pdf",
+                io.BytesIO(make_pdf_bytes("Acme now provides logistics optimization for delivery fleets.")),
+                "application/pdf",
             )
         },
         headers=_admin_headers(),
@@ -94,14 +101,20 @@ def test_invalid_replacement_preserves_current_index(tmp_path: Path, monkeypatch
 
     response = client.put(
         "/documents",
-        files={"file": ("company.txt", io.BytesIO(b"Acme builds healthcare software."), "text/plain")},
+        files={
+            "file": (
+                "company.pdf",
+                io.BytesIO(make_pdf_bytes("Acme builds healthcare software.")),
+                "application/pdf",
+            )
+        },
         headers=headers,
     )
     assert response.status_code == 200
 
     invalid_response = client.put(
         "/documents",
-        files={"file": ("company.txt", io.BytesIO(b"   "), "text/plain")},
+        files={"file": ("company.pdf", io.BytesIO(make_pdf_bytes("   ")), "application/pdf")},
         headers=headers,
     )
     assert invalid_response.status_code == 422
@@ -114,7 +127,7 @@ def test_invalid_replacement_preserves_current_index(tmp_path: Path, monkeypatch
 
 def test_chroma_vector_store_persists_embeddings(tmp_path: Path) -> None:
     store_path = tmp_path / "persistent-chroma"
-    chunks = build_chunks("company.txt", "Acme builds durable analytics software.")
+    chunks = build_chunks("company.pdf", "Acme builds durable analytics software.")
     settings = _settings(tmp_path)
     embeddings = get_embedding_provider(settings)
     vectors = embeddings.embed_texts([chunk.text for chunk in chunks], mode="document")

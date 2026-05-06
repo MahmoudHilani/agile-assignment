@@ -7,7 +7,7 @@ import { useAdminAuth } from "@/context/AdminAuthContext";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
-const ALLOWED_EXTENSIONS = [".pdf", ".docx", ".txt"];
+const ALLOWED_EXTENSIONS = [".pdf"];
 
 type ReplaceStatus = "idle" | "uploading" | "success" | "error";
 
@@ -138,7 +138,7 @@ export default function AdminHeader() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".pdf,.docx,.txt"
+                  accept=".pdf,application/pdf"
                   className="file-picker-hidden"
                   onChange={handleFileChange}
                   aria-label="Select document to upload"
@@ -177,7 +177,7 @@ export default function AdminHeader() {
                       <span className="file-picker-prompt">
                         {isDraggingOver ? "Drop to select" : "Click to browse or drag & drop"}
                       </span>
-                      <span className="file-picker-hint">PDF, DOCX or TXT · max 10 MB</span>
+                      <span className="file-picker-hint">PDF only · max 10 MB</span>
                     </>
                   )}
                 </div>

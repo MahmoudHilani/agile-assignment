@@ -1,19 +1,16 @@
 from __future__ import annotations
 
-import io
 import os
 import re
 import tempfile
 import uuid
-import zipfile
 from pathlib import Path
-from xml.etree import ElementTree
 
 from app.core.config import Settings, get_settings
 from app.domain.models import DocumentChunk, SearchResult
 from app.services.embedding_providers import get_embedding_provider
 
-ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt"}
+ALLOWED_EXTENSIONS = {".pdf"}
 MAX_FILE_BYTES = 10 * 1024 * 1024  # 10 MB
 PDF_CONTEXT_CHUNK_WORDS = 180
 PDF_CONTEXT_CHUNK_OVERLAP = 30
@@ -211,11 +208,7 @@ def search_documents(query: str, top_k: int = 5) -> list[SearchResult]:
 
 def parse_document(filename: str, content: bytes) -> str:
     ext = Path(filename).suffix.lower()
-    if ext == ".txt":
-        text = _decode_text(content)
-    elif ext == ".docx":
-        text = _extract_docx_text(content)
-    elif ext == ".pdf":
+    if ext == ".pdf":
         text = _extract_pdf_text(content)
     else:
         raise ValueError(
@@ -325,28 +318,6 @@ def build_chunks(filename: str, text: str, max_words: int = 120, overlap: int = 
             )
         )
     return chunks
-
-
-def _decode_text(content: bytes) -> str:
-    try:
-        return content.decode("utf-8")
-    except UnicodeDecodeError as exc:
-        raise ValueError("Invalid document") from exc
-
-
-def _extract_docx_text(content: bytes) -> str:
-    try:
-        with zipfile.ZipFile(io.BytesIO(content)) as archive:
-            xml_content = archive.read("word/document.xml")
-    except (KeyError, zipfile.BadZipFile) as exc:
-        raise ValueError("Invalid document") from exc
-
-    try:
-        root = ElementTree.fromstring(xml_content)
-    except ElementTree.ParseError as exc:
-        raise ValueError("Invalid document") from exc
-    namespace = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
-    return "\n".join(node.text or "" for node in root.iter(f"{namespace}t"))
 
 
 def _extract_pdf_text(content: bytes) -> str:

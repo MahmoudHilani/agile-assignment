@@ -29,6 +29,6 @@ def test_voice_requires_no_auth(monkeypatch) -> None:
 def test_document_replace_requires_admin_auth() -> None:
     response = client.put(
         "/documents",
-        files={"file": ("doc.txt", io.BytesIO(b"hello world"), "text/plain")},
+        files={"file": ("doc.pdf", io.BytesIO(b"pdf-bytes"), "application/pdf")},
     )
     assert response.status_code == 401

@@ -10,6 +10,7 @@ from app.domain.models import ChatTurn, SearchResult
 from app.main import create_app
 from app.services import query_service
 from app.services.document_service import store_pdf_context
+from conftest import make_pdf_bytes
 
 
 class RecordingChatProvider:
@@ -68,7 +69,7 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
 def _upload_company_document(client: TestClient, content: bytes) -> None:
     response = client.put(
         "/documents",
-        files={"file": ("company.txt", io.BytesIO(content), "text/plain")},
+        files={"file": ("company.pdf", io.BytesIO(make_pdf_bytes(content.decode("utf-8"))), "application/pdf")},
         headers=_admin_headers(),
     )
     assert response.status_code == 200
@@ -83,7 +84,7 @@ def test_query_remains_public(client: TestClient, monkeypatch: pytest.MonkeyPatc
 
     assert response.status_code == 200
     assert response.json()["answer"] == "Public answer"
-    assert response.json()["sources"] == ["company.txt#0"]
+    assert response.json()["sources"] == ["company.pdf#0"]
 
 
 def test_query_request_accepts_missing_history(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
