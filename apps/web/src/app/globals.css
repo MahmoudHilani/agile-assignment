@@ -235,6 +235,27 @@ body {
   box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
 }
 
+.message-composer.is-multiline {
+  grid-template-rows: auto auto;
+  row-gap: 8px;
+}
+
+.message-composer.is-multiline .message-textarea {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+.message-composer.is-multiline .media-selection-wrapper {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.message-composer.is-multiline .composer-actions {
+  grid-column: 2 / -1;
+  grid-row: 2;
+  justify-content: flex-end;
+}
+
 .message-textarea {
   min-height: 36px;
   max-height: 200px;
@@ -257,12 +278,6 @@ body {
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
-}
-
-.hint-text {
-  color: #64748b;
-  font-size: 0.82rem;
-  white-space: nowrap;
 }
 
 .button-group {
@@ -918,12 +933,8 @@ body {
 
   .composer-actions {
     grid-column: 1 / -1;
-    justify-content: space-between;
+    justify-content: flex-end;
     width: 100%;
-  }
-
-  .hint-text {
-    white-space: normal;
   }
 
   .login-page {
