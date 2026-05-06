@@ -34,6 +34,10 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    @property
+    def canonical_company_document_path(self) -> Path:
+        return self.company_document_dir / self.company_document_filename
+
 
 @lru_cache
 def get_settings() -> Settings:

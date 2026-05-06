@@ -15,6 +15,7 @@ data/documents/*
 !data/documents/.gitkeep
 __pycache__/
 .pytest_cache/
+pytest-cache-files-*/
 .mypy_cache/
 dist/
 build/
