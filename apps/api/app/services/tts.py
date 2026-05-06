@@ -6,8 +6,7 @@ Responsibilities
 - Split cleaned text into segments that fit within a TTS provider's character limit
 - Synthesize each segment, retrying with smaller sub-chunks when a provider rejects
   an oversized segment
-- Assemble segments into a single AudioSynthesis or yield them one at a time for
-  streamed responses
+- Assemble segments into a single AudioSynthesis response
 - Surface TTS errors as TTSError without crashing the request flow
 
 The service depends only on the TextToSpeechProvider protocol defined in
@@ -17,10 +16,8 @@ can be swapped in without touching this file.
 
 from __future__ import annotations
 
-import base64
 import logging
 import re
-from collections.abc import Generator, Sequence
 
 from app.domain.models import AudioSynthesis
 from app.services.interfaces import TextToSpeechProvider
@@ -186,27 +183,3 @@ def synthesize_answer(
     mime_type = parts[0].mime_type
     combined_bytes = b"".join(p.audio_bytes for p in parts)
     return AudioSynthesis(audio_bytes=combined_bytes, mime_type=mime_type)
-
-
-def stream_answer_chunks(
-    provider: TextToSpeechProvider,
-    answer: str,
-    chunk_limit: int = DEFAULT_CHUNK_LIMIT,
-) -> Generator[AudioSynthesis, None, None]:
-    """Yield one AudioSynthesis per text segment.
-
-    Suitable for streaming responses where audio chunks are sent to the client
-    as soon as each segment is ready, rather than waiting for full synthesis.
-
-    Raises
-    ------
-    TTSError
-        If any segment fails synthesis even after splitting.
-    """
-    cleaned = clean_text(answer)
-    if not cleaned:
-        raise TTSError("Answer text is empty after cleaning; nothing to synthesize.")
-
-    segments = split_into_chunks(cleaned, limit=chunk_limit)
-    for segment in segments:
-        yield _synthesize_with_retry(provider, segment)
