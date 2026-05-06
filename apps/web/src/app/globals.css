@@ -497,6 +497,14 @@ body {
   color: #15803d;
 }
 
+.read-aloud-button.speaking {
+  color: #047857;
+}
+
+.read-aloud-button.busy svg {
+  animation: spin 1s linear infinite;
+}
+
 .try-again-button.busy svg {
   animation: spin 1s linear infinite;
 }
