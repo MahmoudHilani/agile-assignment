@@ -29,11 +29,17 @@ interface RetryTarget {
   query: string;
   history: ChatMessage[];
   assistantMessageId: string;
+  documentContextId?: string;
 }
 
 interface TTSResponse {
   mime_type: string;
   audio_b64: string;
+}
+
+interface MessageSentDetail {
+  message: string;
+  documentContextId?: string;
 }
 
 function createMessageId() {
@@ -107,7 +113,8 @@ export default function Home() {
   const sendQuery = useCallback(async (
     query: string,
     mode: "send" | "retry",
-    retryTarget?: RetryTarget
+    retryTarget?: RetryTarget,
+    documentContextId?: string
   ) => {
     activeControllerRef.current?.abort();
 
@@ -131,6 +138,7 @@ export default function Home() {
       query,
       history: userHistory,
       assistantMessageId: assistantMessage.id,
+      documentContextId,
     };
 
     setRetryingMessageId(mode === "retry" ? assistantMessage.id : null);
@@ -161,6 +169,7 @@ export default function Home() {
           query,
           top_k: RETRIEVAL_TOP_K,
           history: requestHistory,
+          document_context_id: documentContextId,
         }),
         signal: controller.signal,
       });
@@ -212,7 +221,7 @@ export default function Home() {
     const retryTarget = retryTargets[assistantMessageId];
     if (!retryTarget || isSending) return;
     stopSpeech();
-    void sendQuery(retryTarget.query, "retry", retryTarget);
+    void sendQuery(retryTarget.query, "retry", retryTarget, retryTarget.documentContextId);
   }, [isSending, retryTargets, sendQuery, stopSpeech]);
 
   const handleReadAloud = useCallback(async (assistantMessageId: string, content: string) => {
@@ -270,9 +279,15 @@ export default function Home() {
   }, [loadingSpeechMessageId, speakingMessageId, stopSpeech]);
 
   const handleMessageSent = useCallback((event: Event) => {
-    const detail = (event as CustomEvent<string>).detail;
-    if (!detail) return;
-    void sendQuery(detail, "send");
+    const detail = (event as CustomEvent<string | MessageSentDetail>).detail;
+    const query = typeof detail === "string" ? detail : detail?.message;
+    if (!query) return;
+    void sendQuery(
+      query,
+      "send",
+      undefined,
+      typeof detail === "string" ? undefined : detail.documentContextId
+    );
   }, [sendQuery]);
 
   useEffect(() => {

@@ -3,7 +3,7 @@
 import type { ChangeEvent, ReactNode } from "react";
 import { useRef, useState } from "react";
 
-type MediaType = "image" | "document" | "audio" | "video";
+type MediaType = "pdf";
 
 interface MediaOption {
   type: MediaType;
@@ -14,21 +14,9 @@ interface MediaOption {
 
 const MEDIA_OPTIONS: MediaOption[] = [
   {
-    type: "image",
-    label: "Image",
-    accept: "image/*",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-        <circle cx="8.5" cy="8.5" r="1.5" />
-        <polyline points="21 15 16 10 5 21" />
-      </svg>
-    ),
-  },
-  {
-    type: "document",
-    label: "Document",
-    accept: ".pdf,.doc,.docx,.txt,.md",
+    type: "pdf",
+    label: "PDF",
+    accept: ".pdf,application/pdf",
     icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -39,41 +27,22 @@ const MEDIA_OPTIONS: MediaOption[] = [
       </svg>
     ),
   },
-  {
-    type: "audio",
-    label: "Audio",
-    accept: "audio/*",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M9 18V5l12-2v13" />
-        <circle cx="6" cy="18" r="3" />
-        <circle cx="18" cy="16" r="3" />
-      </svg>
-    ),
-  },
-  {
-    type: "video",
-    label: "Video",
-    accept: "video/*",
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polygon points="23 7 16 12 23 17 23 7" />
-        <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-      </svg>
-    ),
-  },
 ];
 
-interface SelectedFile {
+export interface SelectedFile {
   type: MediaType;
   file: File;
 }
 
 interface MediaSelectionButtonProps {
   onFileSelected?: (selected: SelectedFile) => void;
+  showSelectedFiles?: boolean;
 }
 
-export default function MediaSelectionButton({ onFileSelected }: MediaSelectionButtonProps) {
+export default function MediaSelectionButton({
+  onFileSelected,
+  showSelectedFiles = true,
+}: MediaSelectionButtonProps) {
   const [open, setOpen] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -103,7 +72,7 @@ export default function MediaSelectionButton({ onFileSelected }: MediaSelectionB
 
   return (
     <div className="media-selection-wrapper">
-      {selectedFiles.length > 0 && (
+      {showSelectedFiles && selectedFiles.length > 0 && (
         <div className="media-chips" aria-label="Attached files">
           {selectedFiles.map((sf, i) => (
             <div key={i} className="media-chip">
@@ -130,8 +99,8 @@ export default function MediaSelectionButton({ onFileSelected }: MediaSelectionB
           onClick={() => setOpen((v) => !v)}
           aria-haspopup="listbox"
           aria-expanded={open}
-          aria-label="Attach media"
-          title="Attach media"
+          aria-label="Attach PDF"
+          title="Attach PDF"
         >
           +
         </button>
@@ -139,7 +108,7 @@ export default function MediaSelectionButton({ onFileSelected }: MediaSelectionB
         {open && (
           <>
             <div className="media-backdrop" onClick={() => setOpen(false)} />
-            <ul className="media-dropdown" role="listbox" aria-label="Select media type">
+            <ul className="media-dropdown" role="listbox" aria-label="Select file type">
               {MEDIA_OPTIONS.map((option) => (
                 <li
                   key={option.type}

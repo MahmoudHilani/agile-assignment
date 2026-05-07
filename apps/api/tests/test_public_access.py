@@ -8,7 +8,10 @@ client = TestClient(app)
 
 
 def test_query_requires_no_auth(monkeypatch) -> None:
-    monkeypatch.setattr("app.api.routes.query.run_rag_query", lambda query, top_k, history=(): ("answer", []))
+    monkeypatch.setattr(
+        "app.api.routes.query.run_rag_query",
+        lambda query, top_k, history=(), document_context=None: ("answer", []),
+    )
     response = client.post("/query", json={"query": "What does the company do?"})
     assert response.status_code == 200
 
@@ -26,6 +29,6 @@ def test_voice_requires_no_auth(monkeypatch) -> None:
 def test_document_replace_requires_admin_auth() -> None:
     response = client.put(
         "/documents",
-        files={"file": ("doc.txt", io.BytesIO(b"hello world"), "text/plain")},
+        files={"file": ("doc.pdf", io.BytesIO(b"pdf-bytes"), "application/pdf")},
     )
     assert response.status_code == 401

@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import io
+import logging
 import os
+import re
 import tempfile
+import uuid
 import zipfile
 from pathlib import Path
 from xml.etree import ElementTree
@@ -11,10 +14,15 @@ from app.core.config import Settings, get_settings
 from app.domain.models import DocumentChunk, SearchResult
 from app.services.embedding_providers import get_embedding_provider
 
-ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt"}
+ALLOWED_EXTENSIONS = {".docx", ".pdf"}
 MAX_FILE_BYTES = 10 * 1024 * 1024  # 10 MB
+PDF_CONTEXT_CHUNK_WORDS = 180
+PDF_CONTEXT_CHUNK_OVERLAP = 30
+PDF_CONTEXT_MAX_CHUNKS = 4
 CURRENT_DOCUMENT_VERSION = "current"
 _active_document_name: str | None = None
+_pdf_contexts: dict[str, list[str]] = {}
+logger = logging.getLogger(__name__)
 
 
 class ChromaVectorStore:
@@ -167,10 +175,26 @@ def initialize_document_index(settings: Settings | None = None) -> str | None:
         return None
 
     candidates = sorted(
-        path for path in storage.iterdir() if path.is_file() and not path.name.startswith(".")
+        path
+        for path in storage.iterdir()
+        if path.is_file()
+        and not path.name.startswith(".")
+        and path.suffix.lower() in ALLOWED_EXTENSIONS
     )
     if not candidates:
         reset_index(resolved_settings)
+        unsupported_files = sorted(
+            path.name
+            for path in storage.iterdir()
+            if path.is_file()
+            and not path.name.startswith(".")
+            and path.suffix.lower() not in ALLOWED_EXTENSIONS
+        )
+        if unsupported_files:
+            logger.warning(
+                "No supported startup document found. Ignoring unsupported file(s): %s",
+                ", ".join(unsupported_files),
+            )
         return None
 
     path = candidates[0]
@@ -205,12 +229,10 @@ def search_documents(query: str, top_k: int = 5) -> list[SearchResult]:
 
 def parse_document(filename: str, content: bytes) -> str:
     ext = Path(filename).suffix.lower()
-    if ext == ".txt":
-        text = _decode_text(content)
+    if ext == ".pdf":
+        text = _extract_pdf_text(content)
     elif ext == ".docx":
         text = _extract_docx_text(content)
-    elif ext == ".pdf":
-        text = _extract_pdf_text(content)
     else:
         raise ValueError(
             f"Unsupported format '{ext}'. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}"
@@ -219,6 +241,81 @@ def parse_document(filename: str, content: bytes) -> str:
     if not text.strip():
         raise ValueError("Uploaded file is empty")
     return text
+
+
+def store_pdf_context(text: str) -> str:
+    normalized_text = text.strip()
+    if not normalized_text:
+        raise ValueError("Uploaded file is empty")
+
+    context_id = str(uuid.uuid4())
+    _pdf_contexts[context_id] = _chunk_pdf_context(normalized_text)
+    return context_id
+
+
+def get_pdf_context(context_id: str | None, query: str | None = None) -> str | None:
+    if context_id is None:
+        return None
+
+    normalized_context_id = context_id.strip()
+    if not normalized_context_id:
+        return None
+
+    chunks = _pdf_contexts.get(normalized_context_id)
+    if chunks is None:
+        raise ValueError("PDF context was not found. Please upload the PDF again.")
+    return _select_pdf_context(chunks, query)
+
+
+def _chunk_pdf_context(text: str) -> list[str]:
+    words = text.split()
+    if not words:
+        return []
+
+    step = max(1, PDF_CONTEXT_CHUNK_WORDS - PDF_CONTEXT_CHUNK_OVERLAP)
+    return [
+        " ".join(words[start : start + PDF_CONTEXT_CHUNK_WORDS])
+        for start in range(0, len(words), step)
+    ]
+
+
+def _select_pdf_context(chunks: list[str], query: str | None) -> str:
+    if not chunks:
+        return ""
+
+    query_terms = _content_terms(query or "")
+    if not query_terms:
+        return "\n\n".join(chunks[:PDF_CONTEXT_MAX_CHUNKS])
+
+    scored_chunks = [
+        (_chunk_score(chunk, query_terms), index, chunk)
+        for index, chunk in enumerate(chunks)
+    ]
+    scored_chunks.sort(key=lambda item: (-item[0], item[1]))
+
+    selected = [
+        (index, chunk)
+        for score, index, chunk in scored_chunks
+        if score > 0
+    ][:PDF_CONTEXT_MAX_CHUNKS]
+    if not selected:
+        selected = [(index, chunk) for _, index, chunk in scored_chunks[:PDF_CONTEXT_MAX_CHUNKS]]
+
+    selected.sort(key=lambda item: item[0])
+    return "\n\n".join(chunk for _, chunk in selected)
+
+
+def _chunk_score(chunk: str, query_terms: set[str]) -> int:
+    chunk_terms = _content_terms(chunk)
+    return sum(1 for term in query_terms if term in chunk_terms)
+
+
+def _content_terms(text: str) -> set[str]:
+    return {
+        term
+        for term in re.findall(r"[a-zA-Z0-9]+", text.lower())
+        if len(term) > 2
+    }
 
 
 def build_chunks(filename: str, text: str, max_words: int = 120, overlap: int = 20) -> list[DocumentChunk]:
@@ -246,28 +343,6 @@ def build_chunks(filename: str, text: str, max_words: int = 120, overlap: int = 
     return chunks
 
 
-def _decode_text(content: bytes) -> str:
-    try:
-        return content.decode("utf-8")
-    except UnicodeDecodeError as exc:
-        raise ValueError("Invalid document") from exc
-
-
-def _extract_docx_text(content: bytes) -> str:
-    try:
-        with zipfile.ZipFile(io.BytesIO(content)) as archive:
-            xml_content = archive.read("word/document.xml")
-    except (KeyError, zipfile.BadZipFile) as exc:
-        raise ValueError("Invalid document") from exc
-
-    try:
-        root = ElementTree.fromstring(xml_content)
-    except ElementTree.ParseError as exc:
-        raise ValueError("Invalid document") from exc
-    namespace = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
-    return "\n".join(node.text or "" for node in root.iter(f"{namespace}t"))
-
-
 def _extract_pdf_text(content: bytes) -> str:
     try:
         import fitz  # type: ignore[import-untyped]
@@ -279,6 +354,41 @@ def _extract_pdf_text(content: bytes) -> str:
             return "\n".join(page.get_text() for page in document)
     except Exception as exc:
         raise ValueError("Invalid document") from exc
+
+
+def _extract_docx_text(content: bytes) -> str:
+    try:
+        with zipfile.ZipFile(io.BytesIO(content)) as archive:
+            document_xml = archive.read("word/document.xml")
+    except (KeyError, zipfile.BadZipFile) as exc:
+        raise ValueError("Invalid document") from exc
+
+    try:
+        root = ElementTree.fromstring(document_xml)
+    except ElementTree.ParseError as exc:
+        raise ValueError("Invalid document") from exc
+
+    namespace = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+    paragraph_tag = f"{{{namespace}}}p"
+    text_tag = f"{{{namespace}}}t"
+    tab_tag = f"{{{namespace}}}tab"
+    break_tag = f"{{{namespace}}}br"
+
+    paragraphs: list[str] = []
+    for paragraph in root.iter(paragraph_tag):
+        pieces: list[str] = []
+        for node in paragraph.iter():
+            if node.tag == text_tag and node.text:
+                pieces.append(node.text)
+            elif node.tag == tab_tag:
+                pieces.append("\t")
+            elif node.tag == break_tag:
+                pieces.append("\n")
+        text = "".join(pieces).strip()
+        if text:
+            paragraphs.append(text)
+
+    return "\n".join(paragraphs)
 
 
 def _set_active_document(filename: str | None) -> None:

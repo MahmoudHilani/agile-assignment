@@ -9,6 +9,8 @@ from app.core.security import create_access_token
 from app.domain.models import ChatTurn, SearchResult
 from app.main import create_app
 from app.services import query_service
+from app.services.document_service import store_pdf_context
+from conftest import make_pdf_bytes
 
 
 class RecordingChatProvider:
@@ -67,7 +69,7 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
 def _upload_company_document(client: TestClient, content: bytes) -> None:
     response = client.put(
         "/documents",
-        files={"file": ("company.txt", io.BytesIO(content), "text/plain")},
+        files={"file": ("company.pdf", io.BytesIO(make_pdf_bytes(content.decode("utf-8"))), "application/pdf")},
         headers=_admin_headers(),
     )
     assert response.status_code == 200
@@ -82,7 +84,7 @@ def test_query_remains_public(client: TestClient, monkeypatch: pytest.MonkeyPatc
 
     assert response.status_code == 200
     assert response.json()["answer"] == "Public answer"
-    assert response.json()["sources"] == ["company.txt#0"]
+    assert response.json()["sources"] == ["company.pdf#0"]
 
 
 def test_query_request_accepts_missing_history(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -98,6 +100,18 @@ def test_query_request_accepts_missing_history(client: TestClient, monkeypatch: 
 
 def test_query_request_rejects_unbounded_prompt_inputs(client: TestClient) -> None:
     response = client.post("/query", json={"query": "x" * 1001})
+
+    assert response.status_code == 422
+
+
+def test_query_request_rejects_unbounded_document_context_id(client: TestClient) -> None:
+    response = client.post(
+        "/query",
+        json={
+            "query": "What should I know?",
+            "document_context_id": "x" * 101,
+        },
+    )
 
     assert response.status_code == 422
 
@@ -173,6 +187,61 @@ def test_rag_prompt_includes_prior_conversation(
         ChatTurn(role="user", content="What does Acme build?"),
         ChatTurn(role="assistant", content="Acme builds clinical AI tools."),
     ]
+
+
+def test_rag_prompt_includes_uploaded_document_context(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    provider = RecordingChatProvider("The uploaded brief describes a booking portal.")
+    monkeypatch.setattr(query_service, "get_chat_provider", lambda _settings=None: provider)
+    monkeypatch.setattr(
+        "app.api.routes.query.get_pdf_context",
+        lambda context_id, query=None: "The brief asks for a booking portal with email reminders.",
+    )
+    _upload_company_document(client, b"Acme builds websites and digital products for businesses.")
+
+    response = client.post(
+        "/query",
+        json={
+            "query": "Can you summarize the brief?",
+            "top_k": 1,
+            "document_context_id": "context-123",
+        },
+    )
+
+    assert response.status_code == 200
+    prompt = provider.prompts[0]
+    assert "Uploaded PDF context:" in prompt
+    assert "The brief asks for a booking portal with email reminders." in prompt
+    assert "Can you summarize the brief?" in prompt
+
+
+def test_rag_prompt_limits_uploaded_document_context_to_relevant_excerpt(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    provider = RecordingChatProvider("The congestion model uses sensor data.")
+    monkeypatch.setattr(query_service, "get_chat_provider", lambda _settings=None: provider)
+    context_id = store_pdf_context(
+        "Invoice payment terms and unrelated procurement details. " * 80
+        + "\n\nThe traffic congestion model predicts delays from sensor data and weather. "
+        + "It reports peak-hour bottlenecks for city planners.\n\n"
+        + "More unrelated appendix material about formatting. " * 80
+    )
+    _upload_company_document(client, b"Acme builds data products and AI assistants.")
+
+    response = client.post(
+        "/query",
+        json={
+            "query": "What does the congestion model predict?",
+            "top_k": 1,
+            "document_context_id": context_id,
+        },
+    )
+
+    assert response.status_code == 200
+    prompt = provider.prompts[0]
+    assert "traffic congestion model predicts delays" in prompt
+    assert len(prompt) < 7000
 
 
 def test_short_answer_to_assistant_follow_up_uses_prior_conversation(

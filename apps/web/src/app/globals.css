@@ -245,6 +245,112 @@ body {
   box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
 }
 
+.message-composer-shell {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pdf-context-row {
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+}
+
+.pdf-context-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(100%, 320px);
+  min-height: 32px;
+  border: 1px solid #a7f3d0;
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 0.875rem;
+  line-height: 1.2;
+  padding: 6px 10px;
+}
+
+.pdf-context-chip.is-loading {
+  color: #475569;
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+.pdf-context-chip span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pdf-context-remove {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: currentColor;
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+}
+
+.pdf-context-remove:hover {
+  background: #d1fae5;
+}
+
+.message-composer.has-pdf {
+  grid-template-rows: auto auto;
+  row-gap: 10px;
+}
+
+.message-composer.has-pdf .pdf-context-row {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+.message-composer.has-pdf .media-selection-wrapper,
+.message-composer.has-pdf .message-textarea,
+.message-composer.has-pdf .composer-actions {
+  grid-row: 2;
+}
+
+.message-composer.has-pdf .media-selection-wrapper {
+  grid-column: 1;
+}
+
+.message-composer.has-pdf .message-textarea {
+  grid-column: 2;
+}
+
+.message-composer.has-pdf .composer-actions {
+  grid-column: 3;
+}
+
+.message-composer.has-pdf.is-multiline {
+  grid-template-rows: auto auto auto;
+}
+
+.message-composer.has-pdf.is-multiline .message-textarea {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.message-composer.has-pdf.is-multiline .media-selection-wrapper {
+  grid-column: 1;
+  grid-row: 3;
+}
+
+.message-composer.has-pdf.is-multiline .composer-actions {
+  grid-column: 2 / -1;
+  grid-row: 3;
+  justify-content: flex-end;
+}
+
 .message-composer.is-multiline {
   grid-template-rows: auto auto;
   row-gap: 8px;

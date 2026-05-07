@@ -3,6 +3,7 @@ from fastapi.responses import StreamingResponse
 
 from app.domain.models import ChatTurn
 from app.schemas.query import QueryRequest, QueryResponse
+from app.services.document_service import get_pdf_context
 from app.services.embedding_providers import EmbeddingProviderError
 from app.services.query_service import LLMProviderError, run_rag_query, run_rag_query_stream
 
@@ -20,6 +21,7 @@ def run_query(request: QueryRequest) -> QueryResponse:
             request.query,
             top_k=request.top_k,
             history=_to_chat_history(request),
+            document_context=get_pdf_context(request.document_context_id, query=request.query),
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -38,6 +40,7 @@ async def run_query_stream(request: QueryRequest):
                 request.query,
                 top_k=request.top_k,
                 history=_to_chat_history(request),
+                document_context=get_pdf_context(request.document_context_id, query=request.query),
             ),
             media_type="text/event-stream"
         )

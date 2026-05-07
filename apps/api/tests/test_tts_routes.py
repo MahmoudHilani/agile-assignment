@@ -1,32 +1,37 @@
-from app.api.routes import tts_routes
+import base64
+
+from fastapi.testclient import TestClient
+
+from app.api.routes.tts_routes import get_tts_provider
+from app.domain.models import AudioSynthesis
+from app.main import app
 
 
-def test_get_answer_from_llm_uses_rag_query(monkeypatch):
-    calls = []
-
-    def fake_run_rag_query(question: str, top_k: int):
-        calls.append((question, top_k))
-        return "Company overview answer", ["company.txt#0"]
-
-    monkeypatch.setattr(tts_routes, "run_rag_query", fake_run_rag_query)
-
-    answer = tts_routes.get_answer_from_llm("What services do you offer?")
-
-    assert answer == "Company overview answer"
-    assert calls == [("What services do you offer?", 5)]
+client = TestClient(app)
 
 
-def test_stream_answer_from_llm_uses_rag_query_stream(monkeypatch):
-    calls = []
+class FakeTTSProvider:
+    def synthesize(self, text: str) -> AudioSynthesis:
+        return AudioSynthesis(audio_bytes=f"spoken:{text}".encode(), mime_type="audio/mpeg")
 
-    async def fake_run_rag_query_stream(question: str, top_k: int):
-        calls.append((question, top_k))
-        yield "Company "
-        yield "overview"
 
-    monkeypatch.setattr(tts_routes, "run_rag_query_stream", fake_run_rag_query_stream)
+def test_tts_endpoint_returns_audio_response() -> None:
+    app.dependency_overrides[get_tts_provider] = lambda: FakeTTSProvider()
+    try:
+        response = client.post("/tts", json={"text": "Hello world"})
+    finally:
+        app.dependency_overrides.clear()
 
-    chunks = list(tts_routes.stream_answer_from_llm("Tell me about the team"))
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["mime_type"] == "audio/mpeg"
+    assert base64.b64decode(payload["audio_b64"]) == b"spoken:Hello world"
+    assert payload["chunk_count"] == 1
 
-    assert chunks == ["Company ", "overview"]
-    assert calls == [("Tell me about the team", 5)]
+
+def test_removed_script_only_tts_routes_are_not_exposed() -> None:
+    ask_response = client.post("/ask/stream", json={"text": "Hello world"})
+    stream_response = client.post("/tts/stream", json={"text": "Hello world"})
+
+    assert ask_response.status_code == 404
+    assert stream_response.status_code == 404
