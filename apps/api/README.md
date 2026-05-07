@@ -28,13 +28,13 @@ Replaces the document used by the API with a newly uploaded file. The new docume
 - No token → `401 Unauthorized`
 - Valid token but non-admin role → `403 Forbidden`
 
-**Accepted formats:** `.pdf`
+**Accepted formats:** `.pdf`, `.docx`
 
 **Constraints:** Maximum file size 10 MB; file must not be empty.
 
 **Success response `200`:**
 ```json
-{ "accepted": true, "filename": "handbook.pdf", "message": "Document 'handbook.pdf' replaced successfully" }
+{ "accepted": true, "filename": "handbook.docx", "message": "Document 'handbook.docx' replaced successfully" }
 ```
 
 **Error responses:** `401`, `403`, `422` (unsupported format / empty file / oversized file)

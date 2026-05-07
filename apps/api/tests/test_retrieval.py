@@ -14,7 +14,7 @@ from app.services.document_service import (
     search_documents,
 )
 from app.services.embedding_providers import get_embedding_provider
-from conftest import make_pdf_bytes
+from conftest import make_docx_bytes, make_pdf_bytes
 
 
 def _admin_headers() -> dict[str, str]:
@@ -51,6 +51,21 @@ def test_initial_document_is_indexed_from_storage(tmp_path: Path, monkeypatch: p
     indexed = initialize_document_index()
 
     assert indexed == "company.pdf"
+    results = search_documents("clinical hospitals", top_k=1)
+    assert len(results) == 1
+    assert "clinical AI tools" in results[0].text
+
+
+def test_initial_docx_document_is_indexed_from_storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    settings = _settings(tmp_path)
+    monkeypatch.setattr("app.services.document_service.get_settings", lambda: settings)
+    storage = Path(settings.document_storage_path)
+    storage.mkdir(parents=True)
+    (storage / "company.docx").write_bytes(make_docx_bytes("Acme builds clinical AI tools for hospitals."))
+
+    indexed = initialize_document_index()
+
+    assert indexed == "company.docx"
     results = search_documents("clinical hospitals", top_k=1)
     assert len(results) == 1
     assert "clinical AI tools" in results[0].text

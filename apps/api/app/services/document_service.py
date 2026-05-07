@@ -1,16 +1,20 @@
 from __future__ import annotations
 
+import io
+import logging
 import os
 import re
 import tempfile
 import uuid
+import zipfile
 from pathlib import Path
+from xml.etree import ElementTree
 
 from app.core.config import Settings, get_settings
 from app.domain.models import DocumentChunk, SearchResult
 from app.services.embedding_providers import get_embedding_provider
 
-ALLOWED_EXTENSIONS = {".pdf"}
+ALLOWED_EXTENSIONS = {".docx", ".pdf"}
 MAX_FILE_BYTES = 10 * 1024 * 1024  # 10 MB
 PDF_CONTEXT_CHUNK_WORDS = 180
 PDF_CONTEXT_CHUNK_OVERLAP = 30
@@ -18,6 +22,7 @@ PDF_CONTEXT_MAX_CHUNKS = 4
 CURRENT_DOCUMENT_VERSION = "current"
 _active_document_name: str | None = None
 _pdf_contexts: dict[str, list[str]] = {}
+logger = logging.getLogger(__name__)
 
 
 class ChromaVectorStore:
@@ -170,10 +175,26 @@ def initialize_document_index(settings: Settings | None = None) -> str | None:
         return None
 
     candidates = sorted(
-        path for path in storage.iterdir() if path.is_file() and not path.name.startswith(".")
+        path
+        for path in storage.iterdir()
+        if path.is_file()
+        and not path.name.startswith(".")
+        and path.suffix.lower() in ALLOWED_EXTENSIONS
     )
     if not candidates:
         reset_index(resolved_settings)
+        unsupported_files = sorted(
+            path.name
+            for path in storage.iterdir()
+            if path.is_file()
+            and not path.name.startswith(".")
+            and path.suffix.lower() not in ALLOWED_EXTENSIONS
+        )
+        if unsupported_files:
+            logger.warning(
+                "No supported startup document found. Ignoring unsupported file(s): %s",
+                ", ".join(unsupported_files),
+            )
         return None
 
     path = candidates[0]
@@ -210,6 +231,8 @@ def parse_document(filename: str, content: bytes) -> str:
     ext = Path(filename).suffix.lower()
     if ext == ".pdf":
         text = _extract_pdf_text(content)
+    elif ext == ".docx":
+        text = _extract_docx_text(content)
     else:
         raise ValueError(
             f"Unsupported format '{ext}'. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}"
@@ -331,6 +354,41 @@ def _extract_pdf_text(content: bytes) -> str:
             return "\n".join(page.get_text() for page in document)
     except Exception as exc:
         raise ValueError("Invalid document") from exc
+
+
+def _extract_docx_text(content: bytes) -> str:
+    try:
+        with zipfile.ZipFile(io.BytesIO(content)) as archive:
+            document_xml = archive.read("word/document.xml")
+    except (KeyError, zipfile.BadZipFile) as exc:
+        raise ValueError("Invalid document") from exc
+
+    try:
+        root = ElementTree.fromstring(document_xml)
+    except ElementTree.ParseError as exc:
+        raise ValueError("Invalid document") from exc
+
+    namespace = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+    paragraph_tag = f"{{{namespace}}}p"
+    text_tag = f"{{{namespace}}}t"
+    tab_tag = f"{{{namespace}}}tab"
+    break_tag = f"{{{namespace}}}br"
+
+    paragraphs: list[str] = []
+    for paragraph in root.iter(paragraph_tag):
+        pieces: list[str] = []
+        for node in paragraph.iter():
+            if node.tag == text_tag and node.text:
+                pieces.append(node.text)
+            elif node.tag == tab_tag:
+                pieces.append("\t")
+            elif node.tag == break_tag:
+                pieces.append("\n")
+        text = "".join(pieces).strip()
+        if text:
+            paragraphs.append(text)
+
+    return "\n".join(paragraphs)
 
 
 def _set_active_document(filename: str | None) -> None:

@@ -1,6 +1,9 @@
 import hashlib
 import math
 import re
+import zipfile
+from io import BytesIO
+from xml.sax.saxutils import escape
 
 import pytest
 
@@ -19,6 +22,28 @@ def make_pdf_bytes(text: str) -> bytes:
     content = document.tobytes()
     document.close()
     return content
+
+
+def make_docx_bytes(text: str) -> bytes:
+    document_xml = f"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p><w:r><w:t>{escape(text)}</w:t></w:r></w:p>
+  </w:body>
+</w:document>
+"""
+    content_types = """<?xml version="1.0" encoding="UTF-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>
+"""
+    buffer = BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("[Content_Types].xml", content_types)
+        archive.writestr("word/document.xml", document_xml)
+    return buffer.getvalue()
 
 
 class FakeSentenceTransformer:

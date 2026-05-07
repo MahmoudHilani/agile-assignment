@@ -6,8 +6,8 @@ from fastapi.testclient import TestClient
 
 from app.core.security import create_access_token
 from app.main import app
-from app.services.document_service import MAX_FILE_BYTES, get_pdf_context
-from conftest import make_pdf_bytes
+from app.services.document_service import MAX_FILE_BYTES, get_pdf_context, parse_document
+from conftest import make_docx_bytes, make_pdf_bytes
 
 client = TestClient(app)
 
@@ -23,6 +23,23 @@ def _txt_file(content: bytes = b"hello world") -> dict:
 def _pdf_file(text: str = "PDF context for queries") -> dict:
     content = make_pdf_bytes(text)
     return {"file": ("context.pdf", io.BytesIO(content), "application/pdf")}
+
+
+def _docx_file(text: str = "DOCX company context") -> dict:
+    content = make_docx_bytes(text)
+    return {
+        "file": (
+            "company.docx",
+            io.BytesIO(content),
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
+    }
+
+
+def test_parse_document_supports_docx() -> None:
+    text = parse_document("company.docx", make_docx_bytes("Company DOCX context"))
+
+    assert "Company DOCX context" in text
 
 
 def test_parse_pdf_valid_file_returns_text() -> None:
@@ -79,6 +96,20 @@ def test_replace_valid_admin_pdf_returns_200(tmp_path: Path, monkeypatch: pytest
     body = response.json()
     assert body["accepted"] is True
     assert body["filename"] == "context.pdf"
+
+
+def test_replace_valid_admin_docx_returns_200(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.services.document_service.get_settings", lambda: _settings(tmp_path))
+    token = make_token("Admin")
+    response = client.put(
+        "/documents",
+        files=_docx_file("Company DOCX handbook content"),
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["accepted"] is True
+    assert body["filename"] == "company.docx"
 
 
 def test_replace_admin_txt_returns_422(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -157,6 +188,15 @@ def test_replace_overwrites_old_document(tmp_path: Path, monkeypatch: pytest.Mon
     stored = list(tmp_path.iterdir())
     assert len(stored) == 1
     assert stored[0].name == "new.pdf"
+
+
+def test_startup_ignores_unsupported_existing_document(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.services.document_service import initialize_document_index
+
+    monkeypatch.setattr("app.services.document_service.get_settings", lambda: _settings(tmp_path))
+    (tmp_path / "company.xlsx").write_bytes(b"not a supported startup document")
+
+    assert initialize_document_index() is None
 
 
 class _settings:

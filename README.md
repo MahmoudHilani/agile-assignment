@@ -120,7 +120,7 @@ Key endpoints:
 | --- | --- |
 | `GET /health` | Health check |
 | `POST /auth/login` | Admin login and JWT creation |
-| `PUT /documents` | Replace the active company PDF; requires admin bearer token |
+| `PUT /documents` | Replace the active company PDF or DOCX document; requires admin bearer token |
 | `POST /documents/parse-pdf` | Parse a PDF for temporary chat context |
 | `POST /query` | Non-streaming RAG response |
 | `POST /query/stream` | Streaming RAG response |
@@ -139,7 +139,7 @@ The backend separates route handling, schemas, domain models, and service logic:
 - `apps/api/app/services`: document parsing, embeddings, retrieval, LLM calls, STT, and TTS
 - `apps/api/app/core`: settings, security, and common response helpers
 
-Document replacement parses uploaded PDFs, chunks the extracted text, embeds chunks with Sentence Transformers, and writes vectors to Chroma. Query requests retrieve relevant chunks, build a RAG prompt, and call the configured Ollama-compatible LLM provider.
+Document replacement parses uploaded PDFs or DOCX files, chunks the extracted text, embeds chunks with Sentence Transformers, and writes vectors to Chroma. Query requests retrieve relevant chunks, build a RAG prompt, and call the configured Ollama-compatible LLM provider.
 
 Admin authentication currently uses a bcrypt password hash and a bearer JWT stored by the web client in `localStorage`. That is acceptable for this assignment prototype, but it should be replaced with an httpOnly, secure, sameSite cookie-backed session before production use.
 
